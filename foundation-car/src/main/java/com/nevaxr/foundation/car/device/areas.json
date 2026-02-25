@@ -1,0 +1,10 @@
+{
+  "hvacAreas": {
+    "0": "OFF",
+    "1": "SPEED_1"
+  },
+  "hvacAreas2":{
+    "0":"OFF",
+    "1":"SPEED_1"
+  }
+}

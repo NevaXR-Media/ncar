@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="unit_kmph">Km/h</string>
+    <string name="unit_mph">M/h</string>
+    <string name="unit_mps">M/s</string>
+    <string name="unit_miph">Mi/h</string>
+    <string name="unit_kw">kW</string>
+    <string name="unit_rpm">rpm</string>
+    <string name="unit_celsius">C</string>
+    <string name="unit_fahrenheit">F</string>
+</resources>

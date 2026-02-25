@@ -11,6 +11,8 @@ android {
         }
     }
 
+    useLibrary("android.car")
+
     defaultConfig {
         applicationId = "com.nevaxr.foundation.car.demo"
         minSdk = 29
