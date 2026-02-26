@@ -6,6 +6,134 @@
     <string name="unit_miph">Mi/h</string>
     <string name="unit_kw">kW</string>
     <string name="unit_rpm">rpm</string>
-    <string name="unit_celsius">C</string>
-    <string name="unit_fahrenheit">F</string>
+    <string name="unit_celsius">°C</string>
+    <string name="unit_fahrenheit">°F</string>
+    <string name="unit_kmps">km/s</string>
+    <string name="unit_kelvin">K</string>
+
+    <!-- UnitAngle -->
+    <string name="unit_degrees">°</string>
+    <string name="unit_arcMinutes">ʹ</string>
+    <string name="unit_arcSeconds">ʹʹ</string>
+    <string name="unit_radians">rad</string>
+    <string name="unit_gradians">grad</string>
+    <string name="unit_revolutions">rev</string>
+
+    <!-- UnitVolume -->
+    <string name="unit_megaliters">ML</string>
+    <string name="unit_kiloliters">kL</string>
+    <string name="unit_liters">L</string>
+    <string name="unit_deciliters">dl</string>
+    <string name="unit_centiliters">cL</string>
+    <string name="unit_milliliters">mL</string>
+    <string name="unit_cubicKilometers">km³</string>
+    <string name="unit_cubicMeters">m³</string>
+    <string name="unit_cubicDecimeters">dm³</string>
+    <string name="unit_cubicCentimeters">cm³</string>
+    <string name="unit_cubicMillimeters">mm³</string>
+    <string name="unit_cubicInches">in³</string>
+    <string name="unit_cubicFeet">ft³</string>
+    <string name="unit_cubicYards">yd³</string>
+    <string name="unit_cubicMiles">mi³</string>
+    <string name="unit_acreFeet">af</string>
+    <string name="unit_bushels">bsh</string>
+    <string name="unit_teaspoons">tsp</string>
+    <string name="unit_tablespoons">tbsp</string>
+    <string name="unit_fluidOunces">fl oz</string>
+    <string name="unit_cups">cup</string>
+    <string name="unit_pints">pt</string>
+    <string name="unit_quarts">qt</string>
+    <string name="unit_gallons">gal</string>
+    <string name="unit_imperialTeaspoons">tsp Imperial</string>
+    <string name="unit_imperialTablespoons">tbsp Imperial</string>
+    <string name="unit_imperialFluidOunces">fl oz Imperial</string>
+    <string name="unit_imperialPints">pt Imperial</string>
+    <string name="unit_imperialQuarts">qt Imperial</string>
+    <string name="unit_imperialGallons">gal Imperial</string>
+    <string name="unit_metricCups">metric cup Imperial</string>
+
+    <!-- UnitArea -->
+    <string name="unit_squareMegameters">Mm²</string>
+    <string name="unit_squareKilometers">km²</string>
+    <string name="unit_squareMeters">m²</string>
+    <string name="unit_squareCentimeters">cm²</string>
+    <string name="unit_squareMillimeters">mm²</string>
+    <string name="unit_squareMicrometers">µm²</string>
+    <string name="unit_squareNanometers">nm²</string>
+    <string name="unit_squareInches">in²</string>
+    <string name="unit_squareFeet">ft²</string>
+    <string name="unit_squareYards">yd²</string>
+    <string name="unit_squareMiles">mi²</string>
+    <string name="unit_acres">ac</string>
+    <string name="unit_ares">a</string>
+    <string name="unit_hectares">ha</string>
+
+    <!-- UnitConcentrationMass -->
+    <string name="unit_gramsPerLiter">g/L</string>
+    <string name="unit_milligramsPerDeciliter">mg/dL</string>
+    <string name="unit_millimolesPerLiter">mmol/L</string>
+
+    <!-- UnitDispersion -->
+    <string name="unit_partsPerMillion">ppm</string>
+
+    <!-- UnitDuration -->
+    <string name="unit_picoseconds">ps</string>
+    <string name="unit_nanoseconds">ns</string>
+    <string name="unit_microseconds">µs</string>
+    <string name="unit_milliseconds">ms</string>
+    <string name="unit_seconds">s</string>
+    <string name="unit_minutes">m</string>
+    <string name="unit_hours">h</string>
+
+    <!-- UnitElectricCharge -->
+    <string name="unit_coulombs">C</string>
+    <string name="unit_megaampereHours">MAh</string>
+    <string name="unit_kiloampereHours">kAh</string>
+    <string name="unit_ampereHours">Ah</string>
+    <string name="unit_milliampereHours">mAh</string>
+    <string name="unit_microampereHours">µAh</string>
+
+    <!-- UnitElectricCurrent -->
+    <string name="unit_megaamperes">MA</string>
+    <string name="unit_kiloamperes">kA</string>
+    <string name="unit_amperes">A</string>
+    <string name="unit_milliamperes">mA</string>
+    <string name="unit_microamperes">µA</string>
+
+    <!-- UnitElectricPotentialDifference -->
+    <string name="unit_megavolts">MV</string>
+    <string name="unit_kilovolts">kV</string>
+    <string name="unit_volts">V</string>
+    <string name="unit_millivolts">mV</string>
+    <string name="unit_microvolts">µV</string>
+
+    <!-- UnitElectricResistance -->
+    <string name="unit_megaohms">MΩ</string>
+    <string name="unit_kiloohms">kΩ</string>
+    <string name="unit_ohms">Ω</string>
+    <string name="unit_milliohms">mΩ</string>
+    <string name="unit_microohms">µΩ</string>
+
+    <!-- UnitEnergy -->
+    <string name="unit_kilojoules">kJ</string>
+    <string name="unit_joules">J</string>
+    <string name="unit_kilocalories">kCal</string>
+    <string name="unit_calories">cal</string>
+    <string name="unit_kilowattHours">kWh</string>
+
+    <!-- UnitFrequency -->
+    <string name="unit_terahertz">THz</string>
+    <string name="unit_gigahertz">GHz</string>
+    <string name="unit_megahertz">MHz</string>
+    <string name="unit_kilohertz">kHz</string>
+    <string name="unit_hertz">Hz</string>
+    <string name="unit_millihertz">mHz</string>
+    <string name="unit_microhertz">µHz</string>
+    <string name="unit_nanohertz">nHz</string>
+    <string name="unit_framesPerSecond">fps</string>
+
+    <!-- UnitFuelEfficiency -->
+    <string name="unit_litersPer100Kilometers">L/100km</string>
+    <string name="unit_milesPerImperialGallon">mpg</string>
+    <string name="unit_milesPerGallon">mpg</string>
 </resources>

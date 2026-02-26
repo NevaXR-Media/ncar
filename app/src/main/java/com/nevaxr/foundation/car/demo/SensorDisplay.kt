@@ -16,7 +16,7 @@ import com.nevaxr.foundation.car.normalized
 
 @Composable
 fun <BaseUnit: MeasurementUnit> SensorDisplay(value: Measurable<BaseUnit>, modifier: Modifier = Modifier) {
-    val unitDisplayName = stringResource(value.unit.displayNameRes)
+    val unitDisplayName = stringResource(value.unit.symbolRes)
     Text("${value.value} $unitDisplayName", modifier = modifier)
 }
 

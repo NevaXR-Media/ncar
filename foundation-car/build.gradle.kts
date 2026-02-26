@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlinx.serialization)
 }
 
 android {
@@ -35,6 +36,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.timber)
+    implementation(libs.kotlinx.serialization)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
