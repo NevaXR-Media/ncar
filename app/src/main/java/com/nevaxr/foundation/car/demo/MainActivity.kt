@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
@@ -30,6 +31,7 @@ import com.nevaxr.foundation.car.NCarService
 import com.nevaxr.foundation.car.UnitSpeed
 import com.nevaxr.foundation.car.convert
 import com.nevaxr.foundation.car.demo.ui.theme.CarDemoTheme
+import com.nevaxr.foundation.car.format
 import com.nevaxr.foundation.car.normalized
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CarDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val context = LocalContext.current
                     val speed by carState.speed.collectAsState()
                     val gear by carState.gear.collectAsState()
                     var deviceInfo by remember { mutableStateOf<Device?>(null) }
@@ -81,7 +84,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Column(Modifier.padding(innerPadding).safeContentPadding()) {
-                        Text("Speed: ${"%.2f".format(speed.convert(UnitSpeed.kilometersPerHour).value)} ${stringResource(UnitSpeed.kilometersPerHour.symbolRes)}")
+                        Text("Speed: ${speed.format(context, UnitSpeed.kilometersPerHour)}")
                         Text("Speed normalized: ${(speed.normalized() * 100).roundToInt()}%")
                         Text("Gear: ${gear.name}")
                         deviceInfo?.let { deviceInfo ->
