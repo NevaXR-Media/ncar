@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.nevaxr.device.Device
 import com.nevaxr.foundation.car.NCarPermission
 import com.nevaxr.foundation.car.NCarService
 import com.nevaxr.foundation.car.UnitSpeed
@@ -42,7 +46,14 @@ class MainActivity : ComponentActivity() {
         val carState = CarState(carService)
 
         permissionDeferred = CompletableDeferred()
-        requestPermissions(arrayOf(NCarPermission.SPEED.permission), 1)
+        requestPermissions(
+            arrayOf(
+                NCarPermission.SPEED.permission,
+                NCarPermission.IDENTIFICATION.permission,
+                NCarPermission.CAR_INFO.permission,
+            ),
+            1
+        )
 
         lifecycleScope.launch {
             permissionDeferred.await()
@@ -62,13 +73,20 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val speed by carState.speed.collectAsState()
                     val gear by carState.gear.collectAsState()
-                    val deviceInfo = remember { carState.deviceInfo() }
+                    var deviceInfo by remember { mutableStateOf<Device?>(null) }
+
+                    LaunchedEffect(Unit) {
+                        permissionDeferred.await()
+                        deviceInfo = runCatching { carState.deviceInfo() }.getOrNull()
+                    }
 
                     Column(Modifier.padding(innerPadding).safeContentPadding()) {
                         Text("Speed: ${"%.2f".format(speed.convert(UnitSpeed.kilometersPerHour).value)} ${stringResource(UnitSpeed.kilometersPerHour.symbolRes)}")
                         Text("Speed normalized: ${(speed.normalized() * 100).roundToInt()}%")
                         Text("Gear: ${gear.name}")
-                        Text("Device: $")
+                        deviceInfo?.let { deviceInfo ->
+                            Text("Device: $deviceInfo")
+                        }
                     }
                 }
             }
