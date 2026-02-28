@@ -92,13 +92,13 @@ class NCarService(context: Context, val coroutineScope: CoroutineScope) {
     fun <Raw, T> flowOf(property: NCarProperty.RawTransform<Raw, T>, rate: NSensorRate) = subscribeFlow(property.id, rate) { property.transform(it.value as Raw) }
     fun <U: MeasurementUnit> flowOf(property: NCarProperty.Measurable<U>, rate: NSensorRate) = subscribeFlow(property.id, rate) {
         val value = it.value as Float
-        Measurable(value, property.unit)
+        Measurement(value, property.unit)
     }
     fun <U: MeasurementUnit> flowOf(property: NCarProperty.MeasurableRanged<U>, rate: NSensorRate) = subscribeFlow(property.id, rate) {
-        MeasurableRanged(
+        MeasurementRanged(
             value = it.value as Float,
             unit = property.unit,
-            range = ClosedMeasurableRange(
+            range = MeasurementUnitRange(
                 start = property.range.start,
                 endInclusive = property.range.endInclusive,
                 unit = property.unit
@@ -109,19 +109,19 @@ class NCarService(context: Context, val coroutineScope: CoroutineScope) {
     fun <T> stateOf(property: NCarProperty.Raw<T>, rate: NSensorRate, initial: T): StateFlow<T> = subscribeState(property.id, rate, initial) { it.value as T }
     fun <Raw, T> stateOf(property: NCarProperty.RawTransform<Raw, T>, rate: NSensorRate, initial: T) = subscribeState(property.id, rate, initial) { property.transform(it.value as Raw) }
     fun <U: MeasurementUnit> stateOf(property: NCarProperty.Measurable<U>, rate: NSensorRate, initial: Float = 0f): StateFlow<Any> {
-        return subscribeState(property.id, rate, Measurable(initial, property.unit)) {
-            Measurable(it.value as Float, property.unit)
+        return subscribeState(property.id, rate, Measurement(initial, property.unit)) {
+            Measurement(it.value as Float, property.unit)
         }
     }
-    fun <U: MeasurementUnit> stateOf(property: NCarProperty.MeasurableRanged<U>, rate: NSensorRate, initial: Float = 0f): StateFlow<MeasurableRanged<U>> {
-        val range = ClosedMeasurableRange(
+    fun <U: MeasurementUnit> stateOf(property: NCarProperty.MeasurableRanged<U>, rate: NSensorRate, initial: Float = 0f): StateFlow<MeasurementRanged<U>> {
+        val range = MeasurementUnitRange(
             start = property.range.start,
             endInclusive = property.range.endInclusive,
             unit = property.unit
         )
 
-        return subscribeState(property.id, rate, MeasurableRanged(initial, property.unit, range)) {
-            MeasurableRanged(
+        return subscribeState(property.id, rate, MeasurementRanged(initial, property.unit, range)) {
+            MeasurementRanged(
                 value = it.value as Float,
                 unit = property.unit,
                 range = range
@@ -140,16 +140,16 @@ data class NCarPropertyRawReader<Raw, T>(val propertyId: Int, val areaId: Int, v
 }
 
 data class NCarPropertyMeasurableReader<U: MeasurementUnit>(val propertyId: Int, val areaId: Int, val unit: U, val propertyManager: CarPropertyManager) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Measurable<U> =
-        Measurable(propertyManager.getFloatProperty(propertyId, areaId), unit)
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): Measurement<U> =
+        Measurement(propertyManager.getFloatProperty(propertyId, areaId), unit)
 }
 
 data class NCarPropertyMeasurableRangedReader<U: MeasurementUnit>(val propertyId: Int, val areaId: Int, val unit: U, val range: ClosedFloatingPointRange<Float>, val propertyManager: CarPropertyManager) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): MeasurableRanged<U> =
-        MeasurableRanged(
+    operator fun getValue(thisRef: Any?, property: KProperty<*>): MeasurementRanged<U> =
+        MeasurementRanged(
             value = propertyManager.getFloatProperty(propertyId, areaId),
             unit = unit,
-            range = ClosedMeasurableRange(
+            range = MeasurementUnitRange(
                 start = range.start,
                 endInclusive = range.endInclusive,
                 unit = unit

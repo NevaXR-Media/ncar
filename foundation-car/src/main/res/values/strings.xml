@@ -1,16 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
-    <string name="unit_kmph">Km/h</string>
-    <string name="unit_mph">M/h</string>
-    <string name="unit_mps">M/s</string>
-    <string name="unit_miph">Mi/h</string>
-    <string name="unit_kw">kW</string>
-    <string name="unit_rpm">rpm</string>
-    <string name="unit_celsius">°C</string>
-    <string name="unit_fahrenheit">°F</string>
-    <string name="unit_kmps">km/s</string>
-    <string name="unit_kelvin">K</string>
-
     <!-- UnitAngle -->
     <string name="unit_degrees">°</string>
     <string name="unit_arcMinutes">ʹ</string>
@@ -136,4 +125,128 @@
     <string name="unit_litersPer100Kilometers">L/100km</string>
     <string name="unit_milesPerImperialGallon">mpg</string>
     <string name="unit_milesPerGallon">mpg</string>
+
+    <!-- UnitLength -->
+    <string name="unit_megameters">Mm</string>
+    <string name="unit_kilometers">km</string>
+    <string name="unit_hectometers">hm</string>
+    <string name="unit_decameters">dam</string>
+    <string name="unit_meters">m</string>
+    <string name="unit_decimeters">dm</string>
+    <string name="unit_centimeters">cm</string>
+    <string name="unit_millimeters">mm</string>
+    <string name="unit_micrometers">µm</string>
+    <string name="unit_nanometers">nm</string>
+    <string name="unit_picometers">pm</string>
+    <string name="unit_inches">in</string>
+    <string name="unit_feet">ft</string>
+    <string name="unit_yards">yd</string>
+    <string name="unit_miles">mi</string>
+    <string name="unit_scandinavianMiles">smi</string>
+    <string name="unit_lightyears">ly</string>
+    <string name="unit_nauticalMiles">NM</string>
+    <string name="unit_fathoms">ftm</string>
+    <string name="unit_furlongs">fur</string>
+    <string name="unit_astronomicalUnits">ua</string>
+    <string name="unit_parsecs">pc</string>
+
+    <!-- UnitLuminance -->
+    <string name="unit_lux">lx</string>
+
+    <!-- UnitInformationStorage -->
+    <string name="unit_bytes">B</string>
+    <string name="unit_bits">bit</string>
+    <string name="unit_nibbles">nibble</string>
+    <string name="unit_yottabytes">YB</string>
+    <string name="unit_zettabytes">ZB</string>
+    <string name="unit_exabytes">EB</string>
+    <string name="unit_petabytes">PB</string>
+    <string name="unit_terabytes">TB</string>
+    <string name="unit_gigabytes">GB</string>
+    <string name="unit_megabytes">MB</string>
+    <string name="unit_kilobytes">kB</string>
+
+    <string name="unit_yottabits">Yb</string>
+    <string name="unit_zettabits">Zb</string>
+    <string name="unit_exabits">Eb</string>
+    <string name="unit_petabits">Pb</string>
+    <string name="unit_terabits">Tb</string>
+    <string name="unit_gigabits">Gb</string>
+    <string name="unit_megabits">Mb</string>
+    <string name="unit_kilobits">kb</string>
+
+    <string name="unit_yobibytes">YiB</string>
+    <string name="unit_zebibytes">ZiB</string>
+    <string name="unit_exbibytes">EiB</string>
+    <string name="unit_pebibytes">PiB</string>
+    <string name="unit_tebibytes">TiB</string>
+    <string name="unit_gibibytes">GiB</string>
+    <string name="unit_mebibytes">MiB</string>
+    <string name="unit_kibibytes">KiB</string>
+
+    <string name="unit_yobibits">Yib</string>
+    <string name="unit_zebibits">Zib</string>
+    <string name="unit_exbibits">Eib</string>
+    <string name="unit_pebibits">Pib</string>
+    <string name="unit_tebibits">Tib</string>
+    <string name="unit_gibibits">Gib</string>
+    <string name="unit_mebibits">Mib</string>
+    <string name="unit_kibibits">Kib</string>
+
+    <!-- UnitMass -->
+    <string name="unit_kilograms">kg</string>
+    <string name="unit_grams">g</string>
+    <string name="unit_decigrams">dg</string>
+    <string name="unit_centigrams">cg</string>
+    <string name="unit_milligrams">mg</string>
+    <string name="unit_micrograms">µg</string>
+    <string name="unit_nanograms">ng</string>
+    <string name="unit_picograms">pg</string>
+    <string name="unit_ounces">oz</string>
+    <string name="unit_pounds">lb</string>
+    <string name="unit_stones">st</string>
+    <string name="unit_metricTons">t</string>
+    <string name="unit_shortTons">ton</string>
+    <string name="unit_carats">ct</string>
+    <string name="unit_ouncesTroy">oz t</string>
+    <string name="unit_slugs">slug</string>
+
+    <!-- UnitPower -->
+    <string name="unit_terawatts">TW</string>
+    <string name="unit_gigawatts">GW</string>
+    <string name="unit_megawatts">MW</string>
+    <string name="unit_kilowatts">kW</string>
+    <string name="unit_watts">W</string>
+    <string name="unit_milliwatts">mW</string>
+    <string name="unit_microwatts">µW</string>
+    <string name="unit_nanowatts">nW</string>
+    <string name="unit_picowatts">pW</string>
+    <string name="unit_femtowatts">fW</string>
+    <string name="unit_horsepower">hp</string>
+
+    <!-- UnitPressure -->
+    <string name="unit_newtonsPerMetersSquared">N/m²</string>
+    <string name="unit_gigapascals">GPa</string>
+    <string name="unit_megapascals">MPa</string>
+    <string name="unit_kilopascals">kPa</string>
+    <string name="unit_hectopascals">hPa</string>
+    <string name="unit_inchesOfMercury">inHg</string>
+    <string name="unit_bars">bar</string>
+    <string name="unit_millibars">mbar</string>
+    <string name="unit_millimetersOfMercury">mmHg</string>
+    <string name="unit_poundsForcePerSquareInch">psi</string>
+
+    <!-- UnitSpeed -->
+    <string name="unit_metersPerSecond">m/s</string>
+    <string name="unit_kilometersPerHour">km/h</string>
+    <string name="unit_milesPerHour">mph</string>
+    <string name="unit_knots">kn</string>
+
+    <!-- UnitTemperature -->
+    <string name="unit_kelvin">K</string>
+    <string name="unit_celsius">°C</string>
+    <string name="unit_fahrenheit">°F</string>
+
+    <!-- UnitRpm -->
+    <string name="unit_rpm">rpm</string>
 </resources>

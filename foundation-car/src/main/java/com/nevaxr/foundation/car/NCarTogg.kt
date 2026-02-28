@@ -21,8 +21,8 @@ object Togg : NCarSpec() {
         )
     }
 
-    val speed = measurable<SpeedUnit>(NCarPropertyId.PERF_VEHICLE_SPEED, SpeedUnit.Mps, 0f..51.3889f)
-    val engine = measurable(NCarPropertyId.ENGINE_RPM, RpmUnit)
+    val speed = measurable(NCarPropertyId.PERF_VEHICLE_SPEED, UnitSpeed.metersPerSecond, 0f..51.3889f)
+    val engine = measurable(NCarPropertyId.ENGINE_RPM, UnitRpm)
     val gear = raw(NCarPropertyId.GEAR_SELECTION) { rawGear: Int ->
         when (rawGear) {
             1 -> NVehicleGear.Neutral

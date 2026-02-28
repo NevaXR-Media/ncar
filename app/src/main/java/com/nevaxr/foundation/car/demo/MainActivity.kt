@@ -23,7 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.nevaxr.foundation.car.NCarPermission
 import com.nevaxr.foundation.car.NCarService
-import com.nevaxr.foundation.car.SpeedUnit
+import com.nevaxr.foundation.car.UnitSpeed
 import com.nevaxr.foundation.car.convert
 import com.nevaxr.foundation.car.demo.ui.theme.CarDemoTheme
 import com.nevaxr.foundation.car.normalized
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     val deviceInfo = remember { carState.deviceInfo() }
 
                     Column(Modifier.padding(innerPadding).safeContentPadding()) {
-                        Text("Speed: ${"%.2f".format(speed.convert(SpeedUnit.KMph).value)} ${stringResource(SpeedUnit.KMph.symbolRes)}")
+                        Text("Speed: ${"%.2f".format(speed.convert(UnitSpeed.kilometersPerHour).value)} ${stringResource(UnitSpeed.kilometersPerHour.symbolRes)}")
                         Text("Speed normalized: ${(speed.normalized() * 100).roundToInt()}%")
                         Text("Gear: ${gear.name}")
                         Text("Device: $")
