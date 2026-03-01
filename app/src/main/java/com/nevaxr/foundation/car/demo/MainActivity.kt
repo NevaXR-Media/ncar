@@ -26,9 +26,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.nevaxr.device.Device
+import com.nevaxr.foundation.car.CarService
+import com.nevaxr.foundation.car.GenericCarSpec
 import com.nevaxr.foundation.car.NCarPermission
 import com.nevaxr.foundation.car.NCarService
+import com.nevaxr.foundation.car.ToggSpec
 import com.nevaxr.foundation.car.UnitSpeed
+import com.nevaxr.foundation.car.VhalProvider
 import com.nevaxr.foundation.car.convert
 import com.nevaxr.foundation.car.demo.ui.theme.CarDemoTheme
 import com.nevaxr.foundation.car.format
@@ -39,12 +43,16 @@ import kotlin.Unit
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
-    lateinit var carService: NCarService
+    lateinit var carService: CarService<GenericCarSpec>
     lateinit var permissionDeferred: CompletableDeferred<Unit>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        carService = NCarService(this, lifecycleScope)
+        carService = CarService.Builder<GenericCarSpec>()
+            .addProvider(VhalProvider())
+            .addCarSpec(ToggSpec)
+            .build()
+
         val carState = CarState(carService)
 
         permissionDeferred = CompletableDeferred()
