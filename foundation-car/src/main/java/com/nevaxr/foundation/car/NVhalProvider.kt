@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarPropertyProvider {
     private val car = android.car.Car.createCar(context)
@@ -16,22 +17,38 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarP
     private var isRunning = false
 
     fun <Raw> subscribe(key: NVhalKey, rate: NSensorRate, handler: suspend (CarPropertyValue<Raw>) -> Unit) {
-        val subscription = subscriptions.getOrPut(key) { VhalPropertySubscription(key, scope) }
+        val subscription = subscriptions.getOrPut(key) {
+            Timber.d("Initializing a new subscription for ${key.name} (${key.id})")
+            VhalPropertySubscription(key, scope)
+        }
+
+        Timber.d("Registering a new property subscription handler for: $key")
         subscription.addHandler(rate) { propValueResult ->
-            propValueResult.onSuccess { handler(it as CarPropertyValue<Raw>) }
+            propValueResult.onSuccess { property ->
+                Timber.d("New value ${key.name} (id=${property.propertyId}, areaId=${property.areaId}, status=${property.propertyStatus}): ${property.value as Raw}")
+                handler(property as CarPropertyValue<Raw>)
+            }.onFailure { err ->
+                Timber.e(err, "New error ${key.name} (id=${key.id})")
+            }
         }
     }
 
     suspend fun <Raw> getProperty(key: NVhalKey) = withContext(Dispatchers.IO) {
-        propertyManager.getProperty<Raw>(key.id, key.areaId)
+        propertyManager.getProperty<Raw>(key.id, key.areaId).also { property ->
+            Timber.d("Property read ${key.name} (id=${property.propertyId}, areaId=${property.areaId}, status=${property.propertyStatus}): ${property.value as Raw}")
+        }
     }
 
     suspend fun setIntProperty(key: NVhalKey, value: Int) = withContext(Dispatchers.IO) {
-        propertyManager.setIntProperty(key.id, key.areaId, value)
+        propertyManager.setIntProperty(key.id, key.areaId, value).also {
+            Timber.d("Property set ${key.name} (id=${key.id}, areaId=${key.areaId}): $value")
+        }
     }
 
     suspend fun setFloatProperty(key: NVhalKey, value: Float) = withContext(Dispatchers.IO) {
-        propertyManager.setFloatProperty(key.id, key.areaId, value)
+        propertyManager.setFloatProperty(key.id, key.areaId, value).also {
+            Timber.d("Property set ${key.name} (id=${key.id}, areaId=${key.areaId}): $value")
+        }
     }
 
     override fun start() {
@@ -44,6 +61,7 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarP
     override fun stop() {
         if (isRunning) {
             subscriptions.values.forEach { it.stop(propertyManager) }
+            isRunning = false
         }
     }
 }
@@ -76,15 +94,23 @@ private class VhalPropertySubscription(val key: NVhalKey, val scope: CoroutineSc
     }
 
     fun start(carPropertyManager: CarPropertyManager) {
-        carPropertyManager.subscribePropertyEvents(
-            key.id,
-            key.areaId,
-            rate.raw,
-            callback
-        )
+        Timber.d("Subscribing to ${key.name} (${key.id})")
+        try {
+            carPropertyManager.subscribePropertyEvents(
+                key.id,
+                key.areaId,
+                rate.raw,
+                callback
+            )
+        } catch (t: Throwable) {
+            Timber.e(t, "Subscription failed to ${key.name} (${key.id})")
+        }
     }
 
     fun stop(carPropertyManager: CarPropertyManager) {
-        carPropertyManager.unsubscribePropertyEvents(key.id, callback)
+        Timber.d("Unsubscribing from ${key.name} (${key.id})")
+        runCatching {
+            carPropertyManager.unsubscribePropertyEvents(key.id, callback)
+        }
     }
 }

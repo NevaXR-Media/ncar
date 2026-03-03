@@ -5,7 +5,6 @@ import timber.log.Timber
 
 object NCarSpecTogg : NCarSpecGeneric {
     override val specName = "Togg"
-
     override fun providers(carService: NCarServiceBase) = listOf(
         carService.propertyProviderOf(NVhalProvider::class)
     )
@@ -17,9 +16,9 @@ object NCarSpecTogg : NCarSpecGeneric {
         return true
     }
 
-    override val deviceId = NVhalProperty.string(NVhalKey.INFO_VIN)
-    override val model = NVhalProperty.string(NVhalKey.INFO_MODEL).optional()
-    override val brand = NVhalProperty.string(NVhalKey.INFO_MAKE).optional()
+    override val deviceId = NVhalProperty.string(NVhalKey.INFO_VIN).optional().withInitial(null)
+    override val model = NVhalProperty.string(NVhalKey.INFO_MODEL).optional().withInitial(null)
+    override val brand = NVhalProperty.string(NVhalKey.INFO_MAKE).optional().withInitial(null)
 
     override val speedRange = MeasurementUnitRange(0f, 51.3889f, UnitSpeed.metersPerSecond)
     override val speed = NVhalProperty.measurement(NVhalKey.PERF_VEHICLE_SPEED, UnitSpeed.metersPerSecond, speedRange)

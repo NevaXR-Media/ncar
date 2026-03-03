@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -13,6 +14,10 @@ android {
 
     useLibrary("android.car")
 
+    buildFeatures {
+        compose = true
+    }
+
     defaultConfig {
         minSdk = 29
 
@@ -23,10 +28,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
         }
     }
     compileOptions {
@@ -36,6 +41,9 @@ android {
 }
 
 dependencies {
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+
     implementation(libs.timber)
     implementation(libs.kotlinx.serialization)
     implementation(libs.androidx.core.ktx)

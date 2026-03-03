@@ -1,3 +1,6 @@
+import java.util.Properties
+import kotlin.apply
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -19,17 +22,39 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+    }
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    signingConfigs {
+        val keystoreProperties = Properties().apply {
+            load(rootProject.file("keystore.properties").inputStream())
+        }
+
+        create("keystore") {
+            keyAlias = keystoreProperties.getProperty("keystore.alias")
+            keyPassword = keystoreProperties.getProperty("keystore.password")
+            storeFile = rootProject.file("platform.keystore")
+            storePassword = keystoreProperties.getProperty("keystore.password")
+        }
     }
 
     buildTypes {
-        release {
+        debug {
+            isDebuggable = true
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            applicationIdSuffix = ".unsigned"
+            addManifestPlaceholders(mapOf(
+                "appLabel" to "NCarDemo.Unsigned",
+            ))
+        }
+
+        release {
+            isDebuggable = true
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("keystore")
+            applicationIdSuffix = ".signed"
+            addManifestPlaceholders(mapOf(
+                "appLabel" to "NCarDemo.Signed",
+            ))
         }
     }
     compileOptions {
@@ -42,6 +67,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.timber)
     implementation(project(":foundation-car"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -53,6 +79,4 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
-
-    testImplementation(libs.junit)
 }

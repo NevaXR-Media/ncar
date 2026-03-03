@@ -1,6 +1,8 @@
 package com.nevaxr.foundation.car
 
 import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import com.nevaxr.device.deviceData.convertUnit
 import java.util.Locale
 
@@ -65,4 +67,28 @@ fun <BaseUnit> MeasurementRanged<BaseUnit>.format(context: Context, targetUnit: 
     val symbol = context.resources.getString(targetUnit.symbolRes)
     val value = unit.convert(value, targetUnit)
     return "%.${fractionDigits}f %s".format(value, symbol)
+}
+
+@Composable
+fun <BaseUnit> Measurement<BaseUnit>.format(fractionDigits: Int = 2): String where BaseUnit : MeasurementUnit {
+    val context = LocalContext.current
+    return format(context, fractionDigits)
+}
+
+@Composable
+fun <BaseUnit> Measurement<BaseUnit>.format(unit: BaseUnit, fractionDigits: Int = 2): String where BaseUnit : Dimension<BaseUnit> {
+    val context = LocalContext.current
+    return format(context, unit, fractionDigits)
+}
+
+@Composable
+fun <BaseUnit> MeasurementRanged<BaseUnit>.format(fractionDigits: Int = 2): String where BaseUnit : MeasurementUnit {
+    val context = LocalContext.current
+    return format(context, fractionDigits)
+}
+
+@Composable
+fun <BaseUnit> MeasurementRanged<BaseUnit>.format(unit: BaseUnit, fractionDigits: Int = 2): String where BaseUnit : Dimension<BaseUnit> {
+    val context = LocalContext.current
+    return format(context, unit, fractionDigits)
 }

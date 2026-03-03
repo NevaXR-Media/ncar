@@ -3,9 +3,9 @@ package com.nevaxr.foundation.car
 import com.nevaxr.foundation.car.device.NCarDoorState
 
 interface NCarSpecGeneric : NCarSpec {
-    val deviceId: NCarProperty<String>
-    val model: NCarProperty<String?>
-    val brand: NCarProperty<String?>
+    val deviceId: NCarStateProperty<String?>
+    val model: NCarStateProperty<String?>
+    val brand: NCarStateProperty<String?>
 
     val speedRange: MeasurementUnitRange<UnitSpeed>
     val speed: NCarStateProperty<MeasurementRanged<UnitSpeed>>

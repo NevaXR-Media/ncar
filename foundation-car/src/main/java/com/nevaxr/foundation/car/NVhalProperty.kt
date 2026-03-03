@@ -1,6 +1,8 @@
 package com.nevaxr.foundation.car
 
 import android.car.hardware.CarPropertyValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -8,15 +10,22 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class NVhalConstantProperty<T>(val value: T): NCarStateProperty<T> {
+    override val displayName = null
+    override val requiredPermissions = null
+
     override fun subscribe(carService: NCarServiceBase, rate: NSensorRate) =
         MutableSharedFlow<T>(1).also { it.tryEmit(value) }
 
     override suspend fun getProperty(carService: NCarServiceBase) = value
-    override fun subscribeState(carService: NCarServiceBase, rate: NSensorRate) = MutableStateFlow(value).asStateFlow()
+    override fun subscribeStateFlow(carService: NCarServiceBase, rate: NSensorRate) = MutableStateFlow(value).asStateFlow()
+    override fun subscribeState(carService: NCarServiceBase, rate: NSensorRate) = mutableStateOf(value)
 }
 
 data class NVhalIntOutputProperty<T>(val key: NVhalKey, val transform: (T) -> Int): NCarPropertyWritable<T> {
-    override suspend fun setProperty(carService: NCarServiceBase, value: T) {
+    override val displayName = key.name
+    override val requiredPermissions = key.permissions
+
+    override suspend fun write(carService: NCarServiceBase, value: T) {
         val provider = carService.propertyProviderOf(NVhalProvider::class)
         val rawValue = transform(value)
         provider.setIntProperty(key, rawValue)
@@ -24,7 +33,10 @@ data class NVhalIntOutputProperty<T>(val key: NVhalKey, val transform: (T) -> In
 }
 
 data class NVhalFloatOutputProperty<T>(val key: NVhalKey, val transform: (T) -> Float): NCarPropertyWritable<T> {
-    override suspend fun setProperty(carService: NCarServiceBase, value: T) {
+    override val displayName = key.name
+    override val requiredPermissions = key.permissions
+
+    override suspend fun write(carService: NCarServiceBase, value: T) {
         val provider = carService.propertyProviderOf(NVhalProvider::class)
         val rawValue = transform(value)
         provider.setFloatProperty(key, rawValue)
@@ -32,6 +44,9 @@ data class NVhalFloatOutputProperty<T>(val key: NVhalKey, val transform: (T) -> 
 }
 
 data class NVhalProperty<Raw, T>(val key: NVhalKey, val transform: (CarPropertyValue<Raw>) -> T) : NCarProperty<T> {
+    override val displayName: String? = key.name
+    override val requiredPermissions: Set<String>? = key.permissions
+
     override fun subscribe(carService: NCarServiceBase, rate: NSensorRate): SharedFlow<T> {
         val provider = carService.propertyProviderOf(NVhalProvider::class)
         val mutableFlow = MutableSharedFlow<T>()

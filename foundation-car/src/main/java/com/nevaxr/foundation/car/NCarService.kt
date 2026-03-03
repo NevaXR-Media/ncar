@@ -5,8 +5,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.reflect.KClass
 
@@ -14,31 +16,44 @@ interface NCarServiceBase {
     fun <T: NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T
 }
 
-class NCarService<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope, private val specs: List<BaseCarSpec>, private val providerLoaders: Map<KClass<*>, suspend () -> NCarPropertyProvider>) : NCarServiceBase {
-    private val _state = MutableStateFlow<State<BaseCarSpec>>(Loading())
-    val state get() = _state.value
+class NCarService<BaseCarSpec: NCarSpec, CarState>(
+    private val scope: CoroutineScope,
+    private val specs: List<BaseCarSpec>,
+    private val providerLoaders: Map<KClass<*>, suspend () -> NCarPropertyProvider>,
+    private val carStateBuilder: (NCar<BaseCarSpec, CarState>) -> CarState
+) : NCarServiceBase {
+    private val _state = MutableStateFlow<State<BaseCarSpec, CarState>>(Loading())
+    val state get() = _state.asStateFlow()
 
-    val car get() = (state as? Ready)?.car
-    val isReady get() = state is Ready
-    val isLoading get() = state is Loading
+    val car get() = (state.value as? Ready)?.car
+    val isReady get() = state.value is Ready
+    val isLoading get() = state.value is Loading
 
-    suspend fun awaitReady() = _state.mapNotNull { it as? Ready<BaseCarSpec> }.first().car
+    suspend fun awaitReady() = _state.mapNotNull { state ->
+        when (state) {
+            is Ready -> Result.success(state.car)
+            is Unavailable -> Result.failure(Exception("CarService is not available"))
+            else -> null
+        }
+    }.first()
 
     private var propertyProviders = mapOf<KClass<*>, NCarPropertyProvider>()
     override fun <T : NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T {
         return propertyProviders[klass] as T
     }
 
-    suspend fun loadCar(): Result<NCar<BaseCarSpec>> {
-        val state = state
-        if (state is Ready<BaseCarSpec>) {
-            return Result.success(state.car)
+    fun loadCar() {
+        if (isReady) {
+            return
         }
 
-        return scope.async {
+        Timber.d("Loading car...")
+
+        scope.launch {
             propertyProviders = this@NCarService.providerLoaders.map { pair ->
                 async {
                     runCatching {
+                        Timber.d("Initializing provider %s", pair.key.simpleName)
                         Pair(pair.key, pair.value())
                     }.onFailure { err ->
                         Timber.e(err, "Property provider (${pair.key.simpleName}) loading failed")
@@ -48,20 +63,19 @@ class NCarService<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope, priv
                 }
             }.awaitAll().mapNotNull { it.getOrNull() }.toMap()
 
-            val foundSpec = specs.firstOrNull { it.identify(this@NCarService) } ?: run {
-                val err = Exception("CarSpec not found")
+            val foundSpec = specs.firstOrNull { it.identify(this@NCarService) }
+            if (foundSpec != null) {
+                Timber.d("Car spec identified: ${foundSpec.specName}")
+
+                val car = NCar(scope, foundSpec, this@NCarService, carStateBuilder)
+                Timber.d("Car state is ready")
+
+                _state.value = Ready(car)
+            } else {
+                Timber.w("None of car specs matched the current device, Car service is unavailable")
                 _state.value = Unavailable()
-                return@async Result.failure(err)
             }
-
-            Timber.d("Car spec identified: ${foundSpec.specName}")
-
-            val car = NCar(scope, foundSpec, this@NCarService)
-            Timber.d("Car state is ready")
-
-            _state.value = Ready(car)
-            Result.success(car)
-        }.await()
+        }
     }
 
     fun start() {
@@ -72,34 +86,34 @@ class NCarService<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope, priv
         car?.spec?.providers(this)?.forEach { it.stop() }
     }
 
-    sealed interface State<BaseCarSpec: NCarSpec>
-    class Loading<BaseCarSpec: NCarSpec> : State<BaseCarSpec>
-    class Unavailable<BaseCarSpec: NCarSpec>: State<BaseCarSpec>
-    data class Ready<BaseCarSpec: NCarSpec>(val car: NCar<BaseCarSpec>): State<BaseCarSpec>
+    sealed interface State<BaseCarSpec: NCarSpec, CarState>
+    class Loading<BaseCarSpec: NCarSpec, CarState> : State<BaseCarSpec, CarState>
+    class Unavailable<BaseCarSpec: NCarSpec, CarState>: State<BaseCarSpec, CarState>
+    data class Ready<BaseCarSpec: NCarSpec, CarState>(val car: NCar<BaseCarSpec, CarState>): State<BaseCarSpec, CarState>
 
-    class Builder<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope) {
+    class Builder<BaseCarSpec: NCarSpec, CarState>(private val scope: CoroutineScope) {
         val providerLoaders = mutableMapOf<KClass<*>, suspend () -> NCarPropertyProvider>()
         val specs = mutableListOf<BaseCarSpec>()
 
-        inline fun <reified T: NCarPropertyProvider> addProvider(noinline provider: suspend () -> T): Builder<BaseCarSpec> {
+        inline fun <reified T: NCarPropertyProvider> addProvider(noinline provider: suspend () -> T): Builder<BaseCarSpec, CarState> {
             providerLoaders[T::class] = provider
             return this
         }
 
-        fun addCarSpec(spec: BaseCarSpec): Builder<BaseCarSpec> {
+        fun addCarSpec(spec: BaseCarSpec): Builder<BaseCarSpec, CarState> {
             specs.add(spec)
             return this
         }
 
-        fun build() = NCarService(scope, specs, providerLoaders)
+        fun build(carStateBuilder: (NCar<BaseCarSpec, CarState>) -> CarState) = NCarService(scope, specs, providerLoaders, carStateBuilder)
     }
 
     companion object {
-        fun buildTogg(context: Context, scope: CoroutineScope): NCarService<NCarSpecTogg> {
-            return Builder<NCarSpecTogg>(scope)
+        fun <CarState> buildTogg(context: Context, scope: CoroutineScope, carStateBuilder: (NCar<NCarSpecTogg, CarState>) -> CarState): NCarService<NCarSpecTogg, CarState> {
+            return Builder<NCarSpecTogg, CarState>(scope)
                 .addCarSpec(NCarSpecTogg)
                 .addProvider { NVhalProvider(context, scope) }
-                .build()
+                .build(carStateBuilder)
         }
     }
 }
