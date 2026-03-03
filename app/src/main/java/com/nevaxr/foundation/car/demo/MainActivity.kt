@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,88 +21,68 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.nevaxr.device.Device
-import com.nevaxr.foundation.car.CarService
-import com.nevaxr.foundation.car.GenericCarSpec
-import com.nevaxr.foundation.car.NCarPermission
+import com.nevaxr.foundation.car.NCar
 import com.nevaxr.foundation.car.NCarService
-import com.nevaxr.foundation.car.ToggSpec
+import com.nevaxr.foundation.car.NCarSpecTogg
 import com.nevaxr.foundation.car.UnitSpeed
-import com.nevaxr.foundation.car.VhalProvider
-import com.nevaxr.foundation.car.convert
 import com.nevaxr.foundation.car.demo.ui.theme.CarDemoTheme
 import com.nevaxr.foundation.car.format
 import com.nevaxr.foundation.car.normalized
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
-import kotlin.Unit
 import kotlin.math.roundToInt
 
+typealias CarSpec = NCarSpecTogg
+
 class MainActivity : ComponentActivity() {
-    lateinit var carService: CarService<GenericCarSpec>
+    lateinit var carService: NCarService<CarSpec>
     lateinit var permissionDeferred: CompletableDeferred<Unit>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        carService = CarService.Builder<GenericCarSpec>()
-            .addProvider(VhalProvider())
-            .addCarSpec(ToggSpec)
-            .build()
-
-        val carState = CarState(carService)
-
         permissionDeferred = CompletableDeferred()
-        requestPermissions(
-            arrayOf(
-                NCarPermission.SPEED.permission,
-                NCarPermission.IDENTIFICATION.permission,
-                NCarPermission.CAR_INFO.permission,
-            ),
-            1
-        )
+        carService = NCarService.buildTogg(this, lifecycleScope)
+
+        lifecycleScope.launch {
+            carService.loadCar().onSuccess { car ->
+                onCarCreated(car)
+            }
+        }
+
 
         lifecycleScope.launch {
             permissionDeferred.await()
 
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 Log.wtf("Lifecycle", "CarService start listening")
-                carService.startListening()
+                carService.start()
             }
 
             Log.wtf("Lifecycle", "CarService stop listening")
-            carService.stopListening()
+            carService.stop()
         }
 
         enableEdgeToEdge()
         setContent {
             CarDemoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val context = LocalContext.current
-                    val speed by carState.speed.collectAsState()
-                    val gear by carState.gear.collectAsState()
-                    var deviceInfo by remember { mutableStateOf<Device?>(null) }
-
-                    LaunchedEffect(Unit) {
-                        permissionDeferred.await()
-                        deviceInfo = runCatching { carState.deviceInfo() }.getOrNull()
-                    }
-
-                    Column(Modifier.padding(innerPadding).safeContentPadding()) {
-                        Text("Speed: ${speed.format(context, UnitSpeed.kilometersPerHour)}")
-                        Text("Speed normalized: ${(speed.normalized() * 100).roundToInt()}%")
-                        Text("Gear: ${gear.name}")
-                        deviceInfo?.let { deviceInfo ->
-                            Text("Device: $deviceInfo")
-                        }
+                    when (val state = carService.state) {
+                        is NCarService.Loading<CarSpec> -> CircularProgressIndicator(Modifier.padding(innerPadding))
+                        is NCarService.Unavailable<CarSpec> -> Text("Car is not available", Modifier.padding(innerPadding))
+                        is NCarService.Ready<CarSpec> -> CarInfo(state.car, Modifier.padding(innerPadding))
                     }
                 }
             }
         }
+    }
+
+    fun onCarCreated(car: NCar<CarSpec>) {
+        val permissions = car.requiredPermissions.toTypedArray()
+        requestPermissions(permissions, 1)
     }
 
     override fun onRequestPermissionsResult(
@@ -128,5 +109,30 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 fun GreetingPreview() {
     CarDemoTheme {
         Greeting("Android")
+    }
+}
+
+@Composable
+fun CarInfo(car: NCar<CarSpec>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val carState = remember(car) { CarState(car) }
+
+    val speed by carState.speed.collectAsState()
+    val gear by carState.gear.collectAsState()
+
+    var deviceInfo by remember { mutableStateOf<CarInfo?>(null) }
+    LaunchedEffect(Unit) {
+        deviceInfo = carState.deviceInfo.await()
+    }
+
+    Column(modifier.safeContentPadding()) {
+        Text("Speed: ${speed.format(context, UnitSpeed.kilometersPerHour)}")
+        Text("Speed normalized: ${(speed.normalized() * 100).roundToInt()}%")
+        Text("Gear: ${gear.name}")
+        deviceInfo?.let { info ->
+            Text("Device id: ${info.id}")
+            Text("Device model: ${info.model}")
+            Text("Device brand: ${info.brand}")
+        }
     }
 }

@@ -1,14 +1,20 @@
 package com.nevaxr.foundation.car
 
-import com.nevaxr.device.NCarPropertyId
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 
-sealed interface NCarProperty<Output> {
-    data class Raw<T>(val id: NCarPropertyId): NCarProperty<T>
-    data class RawArea<T>(val id: NCarPropertyId, val areaId: Int): NCarProperty<T>
-    data class RawTransform<Raw, T>(val id: NCarPropertyId, val transform: (Raw) -> T): NCarProperty<T>
-    data class RawTransformArea<Raw, T>(val id: NCarPropertyId, val areaId: Int, val transform: (Raw) -> T): NCarProperty<T>
-    data class Measurable<BaseUnit : MeasurementUnit>(val id: NCarPropertyId, val unit: BaseUnit) : NCarProperty<Float>
-    data class MeasurableArea<BaseUnit : MeasurementUnit>(val id: NCarPropertyId, val areaId: Int, val unit: BaseUnit) : NCarProperty<Float>
-    data class MeasurableRanged<BaseUnit : MeasurementUnit>(val id: NCarPropertyId, val unit: BaseUnit, val range: ClosedFloatingPointRange<Float>) : NCarProperty<Float>
-    data class MeasurableRangedArea<BaseUnit : MeasurementUnit>(val id: NCarPropertyId, val areaId: Int, val unit: BaseUnit, val range: ClosedFloatingPointRange<Float>) : NCarProperty<Float>
+interface NCarPropertyWritable<T> {
+    suspend fun setProperty(carService: NCarServiceBase, value: T)
+}
+
+interface NCarProperty<T> {
+    val displayName: String? get() = null
+    val requiredPermissions: Set<String>? get() = null
+
+    fun subscribe(carService: NCarServiceBase, rate: NSensorRate): SharedFlow<T>
+    suspend fun getProperty(carService: NCarServiceBase): T
+}
+
+interface NCarStateProperty<T>: NCarProperty<T> {
+    fun subscribeState(carService: NCarServiceBase, rate: NSensorRate): StateFlow<T>
 }

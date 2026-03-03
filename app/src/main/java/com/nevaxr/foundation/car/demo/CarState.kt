@@ -1,21 +1,38 @@
 package com.nevaxr.foundation.car.demo
 
 import androidx.compose.runtime.Stable
-import com.nevaxr.foundation.car.Car
-import com.nevaxr.foundation.car.CarService
-import com.nevaxr.foundation.car.GenericCarSpec
+import com.nevaxr.foundation.car.NCar
+import com.nevaxr.foundation.car.NCarSpecGeneric
 import com.nevaxr.foundation.car.NSensorRate
-import com.nevaxr.foundation.car.NVehicleGear
-import kotlinx.coroutines.CoroutineScope
+import com.nevaxr.foundation.car.NCarGear
+import com.nevaxr.foundation.car.NCarSpecTogg
 import kotlinx.coroutines.async
 
 @Stable
-class CarState(private val car: Car<GenericCarSpec>) {
+class CarState(private val car: NCar<NCarSpecTogg>) {
     val speed = car.stateOf(car.spec.speed, NSensorRate.Fastest)
-    val gear = car.stateOf(car.spec.gear, NSensorRate.OnChange, NVehicleGear.Park)
+    val gear = car.stateOf(car.spec.gear, NSensorRate.OnChange)
 
-    val deviceId = coroutineScope.async { car.read(spec.deviceId) }
-    val brand = coroutineScope.async { car.read(spec.brand) }
-    val model = coroutineScope.async { car.read(spec.model) }
+    val deviceId = car.scope.async { car.read(car.spec.deviceId) }
+    val brand = car.scope.async { car.read(car.spec.brand) }
+    val model = car.scope.async { car.read(car.spec.model) }
+
+    val deviceInfo = car.scope.async {
+        val deviceId = deviceId.await()
+        val brand = brand.await()
+        val model = model.await()
+
+        CarInfo(
+            deviceId,
+            brand,
+            model
+        )
+    }
 }
+
+data class CarInfo(
+    val id: String,
+    val brand: String?,
+    val model: String?,
+)
 

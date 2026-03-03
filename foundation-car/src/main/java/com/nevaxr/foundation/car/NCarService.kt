@@ -1,158 +1,105 @@
 package com.nevaxr.foundation.car
 
-import android.car.Car
-import android.car.hardware.CarPropertyValue
-import android.car.hardware.property.CarPropertyManager
 import android.content.Context
-import com.nevaxr.device.NCarPropertyId
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlin.reflect.KProperty
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
+import timber.log.Timber
+import kotlin.reflect.KClass
 
-class NCarService(context: Context, val coroutineScope: CoroutineScope) {
-    private val carApi = Car.createCar(context)
-    private val carPropertyManager = carApi.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
-    private var subscriptions = mutableMapOf<Int, Subscription>()
+interface NCarServiceBase {
+    fun <T: NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T
+}
 
-    private class Subscription(val property: NCarPropertyId, val coroutineScope: CoroutineScope) {
-        var rate = NSensorRate.OnChange
-        val listeners: MutableList<suspend (Result<CarPropertyValue<*>>) -> Unit> = mutableListOf()
-        val callback = object : CarPropertyManager.CarPropertyEventCallback {
-            override fun onChangeEvent(propValue: CarPropertyValue<*>?) {
-                propValue?.let { propValue ->
-                    coroutineScope.launch {
-                        listeners.forEach { it.invoke(Result.success(propValue)) }
+class NCarService<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope, private val specs: List<BaseCarSpec>, private val providerLoaders: Map<KClass<*>, suspend () -> NCarPropertyProvider>) : NCarServiceBase {
+    private val _state = MutableStateFlow<State<BaseCarSpec>>(Loading())
+    val state get() = _state.value
+
+    val car get() = (state as? Ready)?.car
+    val isReady get() = state is Ready
+    val isLoading get() = state is Loading
+
+    suspend fun awaitReady() = _state.mapNotNull { it as? Ready<BaseCarSpec> }.first().car
+
+    private var propertyProviders = mapOf<KClass<*>, NCarPropertyProvider>()
+    override fun <T : NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T {
+        return propertyProviders[klass] as T
+    }
+
+    suspend fun loadCar(): Result<NCar<BaseCarSpec>> {
+        val state = state
+        if (state is Ready<BaseCarSpec>) {
+            return Result.success(state.car)
+        }
+
+        return scope.async {
+            propertyProviders = this@NCarService.providerLoaders.map { pair ->
+                async {
+                    runCatching {
+                        Pair(pair.key, pair.value())
+                    }.onFailure { err ->
+                        Timber.e(err, "Property provider (${pair.key.simpleName}) loading failed")
+                    }.onSuccess {
+                        Timber.d("Property provider (${pair.key.simpleName} loaded successfully")
                     }
                 }
+            }.awaitAll().mapNotNull { it.getOrNull() }.toMap()
+
+            val foundSpec = specs.firstOrNull { it.identify(this@NCarService) } ?: run {
+                val err = Exception("CarSpec not found")
+                _state.value = Unavailable()
+                return@async Result.failure(err)
             }
-            override fun onErrorEvent(p0: Int, p1: Int) {
-                coroutineScope.launch {
-                    listeners.forEach {
-                        it.invoke(
-                            Result.failure(
-                                Exception("Property callback error: ${property.name} (${property.id})")
-                            )
-                        )
-                    }
-                }
-            }
-        }
 
-        fun addListener(rate: NSensorRate, block: suspend (Result<CarPropertyValue<*>>) -> Unit) {
-            listeners.add(block)
-            if (rate > this.rate) {
-                this.rate = rate
-            }
-        }
+            Timber.d("Car spec identified: ${foundSpec.specName}")
 
-        fun start(carPropertyManager: CarPropertyManager) {
-            carPropertyManager.subscribePropertyEvents(
-                property.id,
-                rate.raw,
-                callback
-            )
-        }
+            val car = NCar(scope, foundSpec, this@NCarService)
+            Timber.d("Car state is ready")
 
-        fun stop(carPropertyManager: CarPropertyManager) {
-            carPropertyManager.unsubscribePropertyEvents(
-                property.id,
-                callback
-            )
-        }
+            _state.value = Ready(car)
+            Result.success(car)
+        }.await()
     }
 
-    private fun subscriptionFor(property: NCarPropertyId) = subscriptions.getOrPut(property.id) {
-        Subscription(property, coroutineScope)
+    fun start() {
+        car?.spec?.providers(this)?.forEach { it.start() }
     }
-    private fun <T> subscribeFlow(property: NCarPropertyId, rate: NSensorRate, block: suspend (CarPropertyValue<*>) -> T): SharedFlow<T> =
-        MutableSharedFlow<T>(replay = 1).also { sharedFlow ->
-            subscriptionFor(property).addListener(rate) { propValueResult ->
-                propValueResult.onSuccess {
-                    sharedFlow.emit(block(it))
-                }
-            }
+
+    fun stop() {
+        car?.spec?.providers(this)?.forEach { it.stop() }
+    }
+
+    sealed interface State<BaseCarSpec: NCarSpec>
+    class Loading<BaseCarSpec: NCarSpec> : State<BaseCarSpec>
+    class Unavailable<BaseCarSpec: NCarSpec>: State<BaseCarSpec>
+    data class Ready<BaseCarSpec: NCarSpec>(val car: NCar<BaseCarSpec>): State<BaseCarSpec>
+
+    class Builder<BaseCarSpec: NCarSpec>(private val scope: CoroutineScope) {
+        val providerLoaders = mutableMapOf<KClass<*>, suspend () -> NCarPropertyProvider>()
+        val specs = mutableListOf<BaseCarSpec>()
+
+        inline fun <reified T: NCarPropertyProvider> addProvider(noinline provider: suspend () -> T): Builder<BaseCarSpec> {
+            providerLoaders[T::class] = provider
+            return this
         }
-    private fun <T> subscribeState(property: NCarPropertyId, rate: NSensorRate, initial: T, block: suspend (CarPropertyValue<*>) -> T): StateFlow<T> =
-        MutableStateFlow(initial).also { stateFlow ->
-            subscriptionFor(property).addListener(rate) { propValueResult ->
-                propValueResult.onSuccess {
-                    stateFlow.emit(block(it))
-                }
-            }
+
+        fun addCarSpec(spec: BaseCarSpec): Builder<BaseCarSpec> {
+            specs.add(spec)
+            return this
         }
 
-    fun startListening() = subscriptions.values.forEach { it.start(carPropertyManager) }
-    fun stopListening() = subscriptions.values.forEach { it.stop(carPropertyManager) }
-
-    fun <T> flowOf(property: NCarProperty.Raw<T>, rate: NSensorRate) = subscribeFlow(property.id, rate) { it.value as T }
-    fun <Raw, T> flowOf(property: NCarProperty.RawTransform<Raw, T>, rate: NSensorRate) = subscribeFlow(property.id, rate) { property.transform(it.value as Raw) }
-    fun <U: MeasurementUnit> flowOf(property: NCarProperty.Measurable<U>, rate: NSensorRate) = subscribeFlow(property.id, rate) {
-        val value = it.value as Float
-        Measurement(value, property.unit)
-    }
-    fun <U: MeasurementUnit> flowOf(property: NCarProperty.MeasurableRanged<U>, rate: NSensorRate) = subscribeFlow(property.id, rate) {
-        MeasurementRanged(
-            value = it.value as Float,
-            unit = property.unit,
-            range = MeasurementUnitRange(
-                start = property.range.start,
-                endInclusive = property.range.endInclusive,
-                unit = property.unit
-            )
-        )
+        fun build() = NCarService(scope, specs, providerLoaders)
     }
 
-    fun <T> stateOf(property: NCarProperty.Raw<T>, rate: NSensorRate, initial: T): StateFlow<T> = subscribeState(property.id, rate, initial) { it.value as T }
-    fun <Raw, T> stateOf(property: NCarProperty.RawTransform<Raw, T>, rate: NSensorRate, initial: T) = subscribeState(property.id, rate, initial) { property.transform(it.value as Raw) }
-    fun <U: MeasurementUnit> stateOf(property: NCarProperty.Measurable<U>, rate: NSensorRate, initial: Float = 0f): StateFlow<Any> {
-        return subscribeState(property.id, rate, Measurement(initial, property.unit)) {
-            Measurement(it.value as Float, property.unit)
+    companion object {
+        fun buildTogg(context: Context, scope: CoroutineScope): NCarService<NCarSpecTogg> {
+            return Builder<NCarSpecTogg>(scope)
+                .addCarSpec(NCarSpecTogg)
+                .addProvider { NVhalProvider(context, scope) }
+                .build()
         }
     }
-    fun <U: MeasurementUnit> stateOf(property: NCarProperty.MeasurableRanged<U>, rate: NSensorRate, initial: Float = 0f): StateFlow<MeasurementRanged<U>> {
-        val range = MeasurementUnitRange(
-            start = property.range.start,
-            endInclusive = property.range.endInclusive,
-            unit = property.unit
-        )
-
-        return subscribeState(property.id, rate, MeasurementRanged(initial, property.unit, range)) {
-            MeasurementRanged(
-                value = it.value as Float,
-                unit = property.unit,
-                range = range
-            )
-        }
-    }
-
-    fun <T> propertyValue(property: NCarProperty.RawArea<T>) = NCarPropertyRawReader<T, T>(property.id.id, property.areaId, carPropertyManager, { it })
-    fun <U: MeasurementUnit> propertyValue(property: NCarProperty.MeasurableArea<U>) = NCarPropertyMeasurableReader(property.id.id, property.areaId, property.unit, carPropertyManager)
-    fun <U: MeasurementUnit> propertyValue(property: NCarProperty.MeasurableRangedArea<U>) = NCarPropertyMeasurableRangedReader(property.id.id, property.areaId, property.unit, property.range, carPropertyManager)
-}
-
-data class NCarPropertyRawReader<Raw, T>(val propertyId: Int, val areaId: Int, val propertyManager: CarPropertyManager, val transform: (Raw) -> T) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): T =
-        propertyManager.getProperty<Raw>(propertyId, areaId).value.let(transform)
-}
-
-data class NCarPropertyMeasurableReader<U: MeasurementUnit>(val propertyId: Int, val areaId: Int, val unit: U, val propertyManager: CarPropertyManager) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): Measurement<U> =
-        Measurement(propertyManager.getFloatProperty(propertyId, areaId), unit)
-}
-
-data class NCarPropertyMeasurableRangedReader<U: MeasurementUnit>(val propertyId: Int, val areaId: Int, val unit: U, val range: ClosedFloatingPointRange<Float>, val propertyManager: CarPropertyManager) {
-    operator fun getValue(thisRef: Any?, property: KProperty<*>): MeasurementRanged<U> =
-        MeasurementRanged(
-            value = propertyManager.getFloatProperty(propertyId, areaId),
-            unit = unit,
-            range = MeasurementUnitRange(
-                start = range.start,
-                endInclusive = range.endInclusive,
-                unit = unit
-            )
-        )
 }

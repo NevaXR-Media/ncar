@@ -5,38 +5,50 @@ import android.car.hardware.property.CarPropertyManager
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class NVhalProvider(context: Context, private val scope: CoroutineScope) : PropertyProvider {
+class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarPropertyProvider {
     private val car = android.car.Car.createCar(context)
     private val propertyManager = car.getCarManager(android.car.Car.PROPERTY_SERVICE) as CarPropertyManager
+    private val subscriptions = mutableMapOf<NVhalKey, VhalPropertySubscription>()
 
-    private val subscriptions = mutableMapOf<Int, VhalPropertySubscription>()
+    private var isRunning = false
 
-    fun <Raw> subscribe(id: Int, rate: NSensorRate, handler: suspend (Raw) -> Unit) {
-        val subscription = subscriptions.getOrPut(id) { VhalPropertySubscription(id, scope) }
+    fun <Raw> subscribe(key: NVhalKey, rate: NSensorRate, handler: suspend (CarPropertyValue<Raw>) -> Unit) {
+        val subscription = subscriptions.getOrPut(key) { VhalPropertySubscription(key, scope) }
         subscription.addHandler(rate) { propValueResult ->
-            propValueResult.onSuccess { handler(it.value as Raw) }
+            propValueResult.onSuccess { handler(it as CarPropertyValue<Raw>) }
         }
     }
 
-    suspend fun <Raw> getProperty(id: Int, areaId: Int) = withContext(Dispatchers.IO) {
-        propertyManager.getProperty<Raw>(id, areaId)
+    suspend fun <Raw> getProperty(key: NVhalKey) = withContext(Dispatchers.IO) {
+        propertyManager.getProperty<Raw>(key.id, key.areaId)
+    }
+
+    suspend fun setIntProperty(key: NVhalKey, value: Int) = withContext(Dispatchers.IO) {
+        propertyManager.setIntProperty(key.id, key.areaId, value)
+    }
+
+    suspend fun setFloatProperty(key: NVhalKey, value: Float) = withContext(Dispatchers.IO) {
+        propertyManager.setFloatProperty(key.id, key.areaId, value)
     }
 
     override fun start() {
-        subscriptions.values.forEach { it.start(propertyManager) }
+        if (!isRunning) {
+            subscriptions.values.forEach { it.start(propertyManager) }
+            isRunning = true
+        }
     }
 
     override fun stop() {
-        subscriptions.values.forEach { it.stop(propertyManager) }
+        if (isRunning) {
+            subscriptions.values.forEach { it.stop(propertyManager) }
+        }
     }
 }
 
-private class VhalPropertySubscription(val id: Int, val scope: CoroutineScope) {
+private class VhalPropertySubscription(val key: NVhalKey, val scope: CoroutineScope) {
     var rate: NSensorRate = NSensorRate.OnChange
     val handlers = mutableListOf<suspend (Result<CarPropertyValue<*>>) -> Unit>()
     val callback = object : CarPropertyManager.CarPropertyEventCallback {
@@ -50,7 +62,7 @@ private class VhalPropertySubscription(val id: Int, val scope: CoroutineScope) {
         override fun onErrorEvent(p0: Int, p1: Int) {
             scope.launch {
                 handlers.forEach {
-                    it.invoke(Result.failure(Exception("VHAL Property callback error: id=$id")))
+                    it.invoke(Result.failure(Exception("VHAL Property callback error: id=${key.id}, areaId=${key.areaId}")))
                 }
             }
         }
@@ -65,41 +77,14 @@ private class VhalPropertySubscription(val id: Int, val scope: CoroutineScope) {
 
     fun start(carPropertyManager: CarPropertyManager) {
         carPropertyManager.subscribePropertyEvents(
-            id,
+            key.id,
+            key.areaId,
             rate.raw,
             callback
         )
     }
 
     fun stop(carPropertyManager: CarPropertyManager) {
-        carPropertyManager.unsubscribePropertyEvents(id, callback)
-    }
-}
-
-data class VhalProperty<Raw, T>(val id: Int, val transform: (Raw) -> T) : CarProperty<T> {
-    override fun subscribe(carService: CarServiceBase): StateFlow<T> {
-        val provider = carService.propertyProviderOf(VhalProvider::class)
-        return provider.subscribe<Raw>(id) { raw ->
-            mutableFlow.emit(transform(raw))
-        }.also(carService.subscriptions::add)
-    }
-
-    override suspend fun getProperty(carService: CarServiceBase): T {
-        val provider = carService.propertyProviderOf(VhalProvider::class)
-        val rawValue = provider.getProperty<Raw>(id)
-        return transform(rawValue)
-    }
-
-    fun <U> map(block: (T) -> U) = VhalProperty<Raw, U>(id) { block(transform(it)) }
-    fun optional() = VhalProperty<Raw?, T?>(id) { it?.let(transform) }
-
-    companion object {
-        private fun <T> notrasnform(value: T): T = value
-        fun float(id: Int) = VhalProperty<Float, Float>(id, ::notrasnform)
-        fun <T> float(id: Int, transform: (Float) -> T) = VhalProperty(id, transform)
-        fun string(id: Int) = VhalProperty<String, String>(id, ::notrasnform)
-        fun <T> string(id: Int, transform: (String) -> T) = VhalProperty(id, transform)
-        fun <BaseUnit: MeasurementUnit> measurement(id: Int, unit: BaseUnit) = VhalProperty(id) { raw: Float -> Measurement(raw, unit) }
-        fun <BaseUnit: MeasurementUnit> measurement(id: Int, unit: BaseUnit, range: MeasurementUnitRange<BaseUnit>) = VhalProperty(id) { raw: Float -> MeasurementRanged(raw, unit, range) }
+        carPropertyManager.unsubscribePropertyEvents(key.id, callback)
     }
 }

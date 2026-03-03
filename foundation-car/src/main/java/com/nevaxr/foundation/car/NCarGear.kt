@@ -1,6 +1,6 @@
 package com.nevaxr.foundation.car
 
-enum class NVehicleGear {
+enum class NCarGear {
     Park,
     Reverse,
     Neutral,
