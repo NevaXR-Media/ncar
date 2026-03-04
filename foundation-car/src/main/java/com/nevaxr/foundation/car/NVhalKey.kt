@@ -160,7 +160,7 @@ data class NVhalKey(val id: Int, val areaId: Int = 0, val name: String? = null, 
         val SEAT_LUMBAR_SIDE_SUPPORT_POS = NVhalKey(356518803, 0, "Seat Lumbar Side Support Position", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
         val SEAT_MEMORY_SELECT = NVhalKey(356518784, 0, "Seat Memory Select", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
         val SEAT_MEMORY_SET = NVhalKey(356518785, 0, "Seat Memory Set", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
-        val SEAT_OCCUPANCY = NVhalKey(356518832, 0, "Seat Occupancy", setOf(ACar.PERMISSION_READ_CAR_SEATS))
+        val SEAT_OCCUPANCY = NVhalKey(356518832, 0, "Seat Occupancy", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
         val SEAT_TILT_MOVE = NVhalKey(356518800, 0, "Seat Tilt Move", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
         val SEAT_TILT_POS = NVhalKey(356518799, 0, "Seat Tilt Position", setOf(ACar.PERMISSION_CONTROL_CAR_SEATS))
         val STEERING_WHEEL_LIGHTS_STATE = NVhalKey(289410828, 0, "Steering Wheel Lights State", setOf(ACar.PERMISSION_READ_INTERIOR_LIGHTS))
@@ -177,14 +177,6 @@ data class NVhalKey(val id: Int, val areaId: Int = 0, val name: String? = null, 
         val WINDOW_LOCK = NVhalKey(320867268, 0, "Window Lock", setOf(ACar.PERMISSION_CONTROL_CAR_WINDOWS))
         val WINDOW_MOVE = NVhalKey(322964417, 0, "Window Move", setOf(ACar.PERMISSION_CONTROL_CAR_WINDOWS))
         val WINDOW_POS = NVhalKey(322964416, 0, "Window Position", setOf(ACar.PERMISSION_CONTROL_CAR_WINDOWS))
-
-        // TODO(umur): These are TOGG specific vendor properties???
-        val VENDOR_DRIVE_MODE_PROPERTY = NVhalKey(557842693, 0, "Vendor Drive Mode Property")
-        val VENDOR_CABIN_CURRENT_TEMP_DEG_PROPERTY = NVhalKey(559939846, 0, "Vendor Cabin Current Temp Deg Property")
-        val VENDOR_SOC_BATTERY_LEVEL_PROPERTY = NVhalKey(559939847, 0, "Vendor Soc Battery Level Property")
-        val VENDOR_CRUISE_CONTROL_STATUS = NVhalKey(557842696, 0, "Vendor Cruise Control Status")
-        val VENDOR_AMBIENT_LIGHT_READ = NVhalKey(557842697, 0, "Vendor Ambient Light Property") // VENDOR_AMBIENT_LIGH
-        val VENDOR_AMBIENT_LIGHT_WRITE = NVhalKey(557842961, 0, "Vendor Ambient Light Property") // VENDOR_AMBIENT_LIGHT_REQ
 
         val all = arrayOf(
             PERF_VEHICLE_SPEED,
@@ -346,12 +338,6 @@ data class NVhalKey(val id: Int, val areaId: Int = 0, val name: String? = null, 
             WINDOW_LOCK,
             WINDOW_MOVE,
             WINDOW_POS,
-            VENDOR_DRIVE_MODE_PROPERTY,
-            VENDOR_CABIN_CURRENT_TEMP_DEG_PROPERTY,
-            VENDOR_SOC_BATTERY_LEVEL_PROPERTY,
-            VENDOR_CRUISE_CONTROL_STATUS,
-            VENDOR_AMBIENT_LIGHT_READ,
-            VENDOR_AMBIENT_LIGHT_WRITE,
         )
     }
 }

@@ -6,14 +6,25 @@ import android.car.hardware.property.CarPropertyManager
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarPropertyProvider {
+/**
+ *  Car property provider for Android auto VHAL car api
+ *  Subscriptions are cold, until this provider is started. Each unique property id is subscribed
+ *  only once. But they may have more than one listener.
+ *
+ *  @param forceInitialRead Runs `readProperty` first when VHAL subscription is added, this is a
+ *                          workaround for some car vendors doesn't supply the current value for
+ *                          subscriptions with ON_CHANGE sensor read rate (such as togg)
+ */
+class NVhalProvider(context: Context, private val scope: CoroutineScope, val forceInitialRead: Boolean) : NCarPropertyProvider {
     private val car = Car.createCar(context)
     private val propertyManager = car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
-    private val subscriptions = mutableMapOf<NVhalKey, VhalPropertySubscription>()
+    private val subscriptions = mutableMapOf<NVhalKey, VhalPropertySubscription<*>>()
 
     private var isRunning = false
 
@@ -23,24 +34,34 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarP
         subscriptions.clear()
     }
 
+    /**
+     * Register a new subscription for this specific NVhalKey (property id) if not exists and add
+     * `handler` as a listener
+     *
+     * If one property subscription has more than one listener with different rates, fastest rate is
+     * selected for the actual car api subscription.
+     */
     fun <Raw> subscribe(key: NVhalKey, rate: NSensorRate, handler: suspend (CarPropertyValue<Raw>) -> Unit) {
         val subscription = subscriptions.getOrPut(key) {
             Timber.d("Initializing a new subscription for ${key.name} (${key.id})")
-            VhalPropertySubscription(key, scope)
-        }
+            VhalPropertySubscription<Raw>(key, scope, forceInitialRead)
+        } as VhalPropertySubscription<Raw>
 
         Timber.d("Registering a new property subscription handler for: $key")
         subscription.addHandler(rate) { propValueResult ->
             propValueResult.onSuccess { property ->
                 val status = runCatching { property.propertyStatus }.getOrNull()?.toString() ?: "N/A"
                 Timber.d("New value ${key.name} (id=${property.propertyId}, areaId=${property.areaId}, status=$status): ${property.value as Raw}")
-                handler(property as CarPropertyValue<Raw>)
+                handler(property)
             }.onFailure { err ->
                 Timber.e(err, "New error ${key.name} (id=${key.id})")
             }
         }
     }
 
+    /**
+     * Reads the given property from the actual VHAL car object
+     */
     suspend fun <Raw> getProperty(key: NVhalKey) = withContext(Dispatchers.IO) {
         propertyManager.getProperty<Raw>(key.id, key.areaId).also { property ->
             val status = runCatching { property.propertyStatus }.getOrNull()?.toString() ?: "N/A"
@@ -60,13 +81,20 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarP
         }
     }
 
-    override fun start() {
+    /**
+     * Starts registered subscriptions on the actual VHAL car instance. This provider does not
+     * produce values until it is started.
+     */
+    override suspend fun start() {
         if (!isRunning) {
-            subscriptions.values.forEach { it.start(propertyManager) }
+            subscriptions.values.map { scope.async { it.start(propertyManager) } }.awaitAll()
             isRunning = true
         }
     }
 
+    /**
+     * Stops registered subscriptions on the actual VHAL car instance (unsubscribes).
+     */
     override fun stop() {
         if (isRunning) {
             subscriptions.values.forEach { it.stop(propertyManager) }
@@ -75,17 +103,23 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope) : NCarP
     }
 }
 
-private class VhalPropertySubscription(val key: NVhalKey, val scope: CoroutineScope) {
-    var rate: NSensorRate = NSensorRate.OnChange
-    val handlers = mutableListOf<suspend (Result<CarPropertyValue<*>>) -> Unit>()
-    val callback = object : CarPropertyManager.CarPropertyEventCallback {
+/**
+ * A subscription object represents the subscription relation between a VHAL property and the car
+ * instance. It doesn't subscribe to the actual car instance until it is started. Same subscription
+ * may trigger more than one listener (handler).
+ *
+ * @param forceInitialRead Runs `readProperty` first when VHAL subscription is started, this is a
+ *                          workaround for some car vendors doesn't supply the current value for
+ *                          subscriptions with ON_CHANGE sensor read rate (such as TOGG)
+ */
+private class VhalPropertySubscription<Raw>(val key: NVhalKey, val scope: CoroutineScope, val forceInitialRead: Boolean) {
+    private var rate: NSensorRate = NSensorRate.OnChange
+    private val handlers = mutableListOf<suspend (Result<CarPropertyValue<Raw>>) -> Unit>()
+    private val callback = object : CarPropertyManager.CarPropertyEventCallback {
         override fun onChangeEvent(propValue: CarPropertyValue<*>?) {
-            propValue?.let { propValue ->
-                scope.launch {
-                    handlers.forEach { it.invoke(Result.success(propValue)) }
-                }
-            }
+            propValue?.let { emit(it as CarPropertyValue<Raw>) }
         }
+
         override fun onErrorEvent(p0: Int, p1: Int) {
             scope.launch {
                 handlers.forEach {
@@ -95,30 +129,51 @@ private class VhalPropertySubscription(val key: NVhalKey, val scope: CoroutineSc
         }
     }
 
-    fun addHandler(rate: NSensorRate, block: suspend (Result<CarPropertyValue<*>>) -> Unit) {
+    private fun emit(propertyValue: CarPropertyValue<Raw>) {
+        scope.launch {
+            handlers.forEach { it.invoke(Result.success(propertyValue)) }
+        }
+    }
+
+    /**
+     * Add a new value handler for this property subscription. Subscription's actual update rate
+     * will be determined by the fastest added handler, therefore actual sensor update rate may be
+     * faster than requested rate.
+     */
+    fun addHandler(rate: NSensorRate, block: suspend (Result<CarPropertyValue<Raw>>) -> Unit) {
         handlers.add(block)
         if (rate > this.rate) {
             this.rate = rate
         }
     }
 
-    fun start(carPropertyManager: CarPropertyManager) {
+    /**
+     * Subscribe to actual VHAL car property, and start listening to property value events
+     */
+    suspend fun start(carPropertyManager: CarPropertyManager) = withContext(Dispatchers.IO) {
         try {
-            val result = carPropertyManager.subscribePropertyEvents(
+            Timber.d("Subscribing to %s (%d)", key.name, key.id)
+            if (forceInitialRead) {
+                val initialValue = carPropertyManager.getProperty<Raw>(key.id, key.areaId)
+                emit(initialValue)
+            }
+
+            val result = carPropertyManager.registerCallback(
+                callback,
                 key.id,
-                key.areaId,
                 rate.raw,
-                callback
             )
-            Timber.d("Subscribed to ${key.name} (${key.id}): $result")
         } catch (t: Throwable) {
-            Timber.e(t, "Subscription failed to ${key.name} (${key.id})")
+            Timber.e(t, "Subscription failed to %s (%d)", key.name, key.id)
         }
     }
 
+    /**
+     * Unsubscribes from the actual VHAL car object
+     */
     fun stop(carPropertyManager: CarPropertyManager) {
         try {
-            carPropertyManager.unsubscribePropertyEvents(key.id, callback)
+            carPropertyManager.unregisterCallback(callback, key.id)
             Timber.d("Unsubscribed from ${key.name} (${key.id})")
         } catch (err: Throwable) {
             Timber.e(err, "Unsubscribing failed from ${key.name} (${key.id})")

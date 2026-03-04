@@ -2,6 +2,6 @@ package com.nevaxr.foundation.car
 
 interface NCarPropertyProvider {
     fun release() {}
-    fun start()
+    suspend fun start()
     fun stop()
 }

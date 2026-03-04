@@ -3,7 +3,20 @@ package com.nevaxr.foundation.car
 import com.nevaxr.foundation.car.device.NCarDoorState
 import timber.log.Timber
 
+const val NCAR_TOGG_BRAND = "Togg"
+
 object NCarSpecTogg : NCarSpecGeneric {
+    private object VendorKeys {
+        // TODO(umur): These are TOGG specific vendor properties???
+        private val VENDOR_PERMISSION = setOf("android.car.permission.CAR_VENDOR_EXTENSION")
+        val DRIVE_MODE_PROPERTY = NVhalKey(557842693, 0, "Vendor Drive Mode Property", VENDOR_PERMISSION)
+        val CABIN_CURRENT_TEMP_DEG_PROPERTY = NVhalKey(559939846, 0, "Vendor Cabin Current Temp Deg Property", VENDOR_PERMISSION)
+        val SOC_BATTERY_LEVEL_PROPERTY = NVhalKey(559939847, 0, "Vendor Soc Battery Level Property", VENDOR_PERMISSION)
+        val CRUISE_CONTROL_STATUS = NVhalKey(557842696, 0, "Vendor Cruise Control Status", VENDOR_PERMISSION)
+        val AMBIENT_LIGHT_READ = NVhalKey(557842697, 0, "Vendor Ambient Light Property", VENDOR_PERMISSION) // VENDOR_AMBIENT_LIGH
+        val AMBIENT_LIGHT_WRITE = NVhalKey(557842961, 0, "Vendor Ambient Light Property", VENDOR_PERMISSION) // VENDOR_AMBIENT_LIGHT_REQ
+    }
+
     override val specName = "Togg"
     override fun providers(carService: NCarServiceBase) = listOf(
         carService.propertyProviderOf(NVhalProvider::class)
@@ -13,7 +26,7 @@ object NCarSpecTogg : NCarSpecGeneric {
         val brand = brand.getProperty(carService)
         val model = model.getProperty(carService)
         Timber.d("Checking if the car is Togg, brand: ${brand ?: "null"}, model: ${model ?: "null"}")
-        return true
+        return brand == NCAR_TOGG_BRAND
     }
 
     override val deviceId = NVhalProperty.string(NVhalKey.INFO_VIN).optional().withInitial(null)
@@ -33,7 +46,7 @@ object NCarSpecTogg : NCarSpecGeneric {
     }
 
     enum class DrivingMode { ECO, COMFORT, SPORT, UNKNOWN }
-    val drivingMode = NVhalProperty.int(NVhalKey.VENDOR_DRIVE_MODE_PROPERTY, DrivingMode.UNKNOWN) { raw: Int ->
+    val drivingMode = NVhalProperty.int(VendorKeys.DRIVE_MODE_PROPERTY, DrivingMode.UNKNOWN) { raw: Int ->
         when (raw) {
             0 -> DrivingMode.ECO
             1 -> DrivingMode.COMFORT
@@ -49,9 +62,9 @@ object NCarSpecTogg : NCarSpecGeneric {
     override val hvacFanSpeed = NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
     override val hvacPassengerSpeed = NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
     override val hvacTemperature = NVhalProperty.measurement(NVhalKey.HVAC_TEMPERATURE_CURRENT, UnitTemperature.celsius)
-    override val hvacInteriorTemperature = NVhalProperty.measurement(NVhalKey.VENDOR_CABIN_CURRENT_TEMP_DEG_PROPERTY, UnitTemperature.celsius)
+    override val hvacInteriorTemperature = NVhalProperty.measurement(VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY, UnitTemperature.celsius)
     override val hvacExteriorTemperature = NVhalProperty.measurement(NVhalKey.ENV_OUTSIDE_TEMPERATURE, UnitTemperature.celsius)
-    override val batteryCapacity = NVhalProperty.measurement(NVhalKey.INFO_EV_BATTERY_CAPACITY, UnitEnergy.kilowattHours, MeasurementUnitRange(0f, 88.5f, UnitEnergy.kilowattHours))
+    override val batteryCapacity = NVhalProperty.measurement(NVhalKey.INFO_EV_BATTERY_CAPACITY, UnitEnergy.wattHours, MeasurementUnitRange(0f, 88.5f, UnitEnergy.kilowattHours))
     override val battery = NVhalProperty.float(NVhalKey.EV_BATTERY_LEVEL)
     override val engine = NVhalProperty.measurement(NVhalKey.ENGINE_RPM, UnitPower.kilowatts, MeasurementUnitRange(0f, 15_000f, UnitPower.kilowatts))
     override val acceleration = NVhalProperty.constant(0f)
@@ -137,7 +150,7 @@ object NCarSpecTogg : NCarSpecGeneric {
     private const val AMBIENT_COLOR_BLUE = 6
     private const val AMBIENT_COLOR_GREEN = 7
     private const val AMBIENT_COLOR_WHITE = 8
-    override val ambientLight = NVhalProperty.int(NVhalKey.VENDOR_AMBIENT_LIGHT_READ, NCarAmbientColor.NONE) { raw ->
+    override val ambientLight = NVhalProperty.int(VendorKeys.AMBIENT_LIGHT_READ, NCarAmbientColor.NONE) { raw ->
         when (raw) {
             AMBIENT_COLOR_NONE -> NCarAmbientColor.NONE
             AMBIENT_COLOR_TURQUOISE -> NCarAmbientColor.TURQUOISE
@@ -152,7 +165,7 @@ object NCarSpecTogg : NCarSpecGeneric {
         }
     }
 
-    override val ambientLightControl = NVhalProperty.intOutput<NCarAmbientColor>(NVhalKey.VENDOR_AMBIENT_LIGHT_WRITE) { ambientColor ->
+    override val ambientLightControl = NVhalProperty.intOutput<NCarAmbientColor>(VendorKeys.AMBIENT_LIGHT_WRITE) { ambientColor ->
         when (ambientColor) {
             NCarAmbientColor.NONE -> AMBIENT_COLOR_NONE
             NCarAmbientColor.TURQUOISE -> AMBIENT_COLOR_TURQUOISE
@@ -166,4 +179,3 @@ object NCarSpecTogg : NCarSpecGeneric {
         }
     }
 }
-

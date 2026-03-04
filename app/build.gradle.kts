@@ -49,9 +49,15 @@ android {
 
         release {
             isDebuggable = true
-            isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("keystore")
             applicationIdSuffix = ".signed"
+            isMinifyEnabled = true
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
             addManifestPlaceholders(mapOf(
                 "appLabel" to "NCarDemo.Signed",
             ))

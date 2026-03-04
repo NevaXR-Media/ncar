@@ -2,7 +2,6 @@ package com.nevaxr.foundation.car.demo
 
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,21 +15,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.nevaxr.foundation.car.NCar
 import com.nevaxr.foundation.car.NCarService
 import com.nevaxr.foundation.car.NCarSpecTogg
+import com.nevaxr.foundation.car.UnitEnergy
 import com.nevaxr.foundation.car.UnitSpeed
 import com.nevaxr.foundation.car.demo.ui.theme.CarDemoTheme
 import com.nevaxr.foundation.car.format
@@ -51,6 +44,11 @@ class MainActivity : ComponentActivity() {
         Timber.plant(Timber.DebugTree())
 
         permissionDeferred = CompletableDeferred()
+        Timber.tag("Lifecycle").d("MainActivity.onCreate")
+
+        lifecycleScope.launch {
+            carService.awaitReady().onSuccess(::onCarCreated)
+        }
 
         enableEdgeToEdge()
         setContent {
@@ -69,9 +67,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-
         lifecycleScope.launch {
-            carService.awaitReady().getOrNull()?.let(::onCarCreated)
             permissionDeferred.await()
             carService.start()
         }
@@ -79,19 +75,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        application.carService.stop()
+        carService.stop()
     }
 
+    var carPermissionsRequested = false
+    val carPermissionRequestCode: Int = 0xdead
     fun onCarCreated(car: NCar<CarSpec, CarState>) {
-        val permissions = car.requiredPermissions.filter {
-            checkSelfPermission(it) == PackageManager.PERMISSION_DENIED
+        if (carPermissionsRequested || permissionDeferred.isCompleted) {
+            return
         }
 
-        if (permissions.isNotEmpty()) {
-            Log.d("Car", "Car instance requires permissions: ${permissions.toList()}")
-            requestPermissions(permissions.toTypedArray(), 1)
+        val missingPermissions = car.requiredPermissions.filter {
+            shouldShowRequestPermissionRationale(it)
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            Timber.tag("Lifecycle").d("Requesting permissions for car properties: %s", missingPermissions.toList().toString())
+            carPermissionsRequested = true
+            requestPermissions(missingPermissions.toTypedArray(), carPermissionRequestCode)
         } else {
-            Log.w("Car", "Car instance's required permissions are empty")
             permissionDeferred.complete(Unit)
         }
     }
@@ -102,12 +104,19 @@ class MainActivity : ComponentActivity() {
         grantResults: IntArray,
         deviceId: Int
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
-        permissions.forEachIndexed { index, permission ->
-            Log.d("Permission", "Permission $permission grant result: ${grantResults[index]}")
-        }
+        if (requestCode == carPermissionRequestCode) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
+            permissions.forEachIndexed { index, permission ->
+                val granted = grantResults[index] == PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    Timber.tag("Permission").d("Permission %s granted", permission)
+                } else {
+                    Timber.tag("Permission").w("Permission %s denied", permission)
+                }
+            }
 
-        permissionDeferred.complete(Unit)
+            permissionDeferred.complete(Unit)
+        }
     }
 }
 
@@ -151,7 +160,7 @@ fun CarInfo(state: CarState, modifier: Modifier = Modifier) {
         Text("hvacTemperature: ${state.hvacTemperature.format()}")
         Text("hvacInteriorTemperature: ${state.hvacInteriorTemperature.format()}")
         Text("hvacExteriorTemperature: ${state.hvacExteriorTemperature.format()}")
-        Text("batteryCapacity: ${state.batteryCapacity.format()}")
+        Text("batteryCapacity: ${state.batteryCapacity.format(UnitEnergy.kilowattHours)}")
         Text("battery: ${state.battery}")
         Text("engine: ${state.engine.format()}")
         Text("acceleration: ${state.acceleration}")

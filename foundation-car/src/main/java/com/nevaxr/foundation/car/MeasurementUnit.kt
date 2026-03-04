@@ -337,6 +337,7 @@ data class UnitEnergy(override val symbolRes: Int, override val converter: UnitC
         val joules = R.string.unit_joules
         val kilocalories = R.string.unit_kilocalories
         val calories = R.string.unit_calories
+        val wattHours = R.string.unit_wattHours
         val kilowattHours = R.string.unit_kilowattHours
     }
 
@@ -345,6 +346,7 @@ data class UnitEnergy(override val symbolRes: Int, override val converter: UnitC
         const val joules = 1.0f
         const val kilocalories = 4184.0f
         const val calories = 4.184f
+        const val wattHours = 3599.9998f
         const val kilowattHours = 3600000.0f
     }
 
@@ -355,6 +357,7 @@ data class UnitEnergy(override val symbolRes: Int, override val converter: UnitC
         val joules get() = UnitEnergy(Symbol.joules, Coefficient.joules)
         val kilocalories get() = UnitEnergy(Symbol.kilocalories, Coefficient.kilocalories)
         val calories get() = UnitEnergy(Symbol.calories, Coefficient.calories)
+        val wattHours get() = UnitEnergy(Symbol.wattHours, Coefficient.wattHours)
         val kilowattHours get() = UnitEnergy(Symbol.kilowattHours, Coefficient.kilowattHours)
     }
 }

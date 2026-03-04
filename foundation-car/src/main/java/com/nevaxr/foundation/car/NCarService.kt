@@ -2,6 +2,7 @@ package com.nevaxr.foundation.car
 
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +64,11 @@ class NCarService<BaseCarSpec: NCarSpec, CarState>(
                 }
             }.awaitAll().mapNotNull { it.getOrNull() }.toMap()
 
-            val foundSpec = specs.firstOrNull { it.identify(this@NCarService) }
+            val foundSpec = specs.firstOrNull { spec ->
+                val result = runCatching { spec.identify(this@NCarService) }
+                result.getOrNull() == true
+            }
+
             if (foundSpec != null) {
                 Timber.d("Car spec identified: ${foundSpec.specName}")
 
@@ -78,14 +83,24 @@ class NCarService<BaseCarSpec: NCarSpec, CarState>(
         }
     }
 
+    private var isProvidersRunning = false
+    private var startJob: Job? = null
     fun start() {
-        Timber.d("Starting providers...")
-        car?.spec?.providers(this)?.forEach { it.start() }
+        if (startJob?.isActive == true) return
+        if (!isProvidersRunning) {
+            startJob = scope.launch {
+                val car = awaitReady().getOrThrow()
+                car.spec.providers(this@NCarService).forEach { it.start() }
+                isProvidersRunning = true
+            }
+        }
     }
 
     fun stop() {
-        Timber.d("Stopping providers...")
-        car?.spec?.providers(this)?.forEach { it.stop() }
+        if (startJob?.isCompleted == true && isProvidersRunning) {
+            Timber.d("Stopping providers...")
+            car?.spec?.providers(this)?.forEach { it.stop() }
+        }
     }
 
     fun releaseCar() {
@@ -117,10 +132,17 @@ class NCarService<BaseCarSpec: NCarSpec, CarState>(
     }
 
     companion object {
+        fun <CarState> buildAndroidAutoGeneric(context: Context, scope: CoroutineScope, forceInitialPropertyRead: Boolean = false, carStateBuilder: (NCar<NCarSpecGeneric, CarState>) -> CarState): NCarService<NCarSpecGeneric, CarState> {
+            return Builder<NCarSpecGeneric, CarState>(scope)
+                .addCarSpec(NCarSpecTogg)
+                .addProvider { NVhalProvider(context, scope, forceInitialPropertyRead) }
+                .build(carStateBuilder)
+        }
+
         fun <CarState> buildTogg(context: Context, scope: CoroutineScope, carStateBuilder: (NCar<NCarSpecTogg, CarState>) -> CarState): NCarService<NCarSpecTogg, CarState> {
             return Builder<NCarSpecTogg, CarState>(scope)
                 .addCarSpec(NCarSpecTogg)
-                .addProvider { NVhalProvider(context, scope) }
+                .addProvider { NVhalProvider(context, scope, true) }
                 .build(carStateBuilder)
         }
     }

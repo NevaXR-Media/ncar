@@ -249,4 +249,5 @@
 
     <!-- UnitRpm -->
     <string name="unit_rpm">rpm</string>
+    <string name="unit_wattHours">Wh</string>
 </resources>
