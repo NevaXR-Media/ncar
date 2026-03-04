@@ -1,5 +1,6 @@
 package com.nevaxr.foundation.car.demo
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -42,32 +43,14 @@ import kotlin.math.roundToInt
 typealias CarSpec = NCarSpecTogg
 
 class MainActivity : ComponentActivity() {
-    lateinit var carService: NCarService<CarSpec, CarState>
+    val carService get() = application.carService
+
     lateinit var permissionDeferred: CompletableDeferred<Unit>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         Timber.plant(Timber.DebugTree())
 
         permissionDeferred = CompletableDeferred()
-        carService = NCarService.buildTogg(this, lifecycleScope, ::CarState)
-
-        lifecycleScope.launch {
-            carService.loadCar()
-            carService.awaitReady().getOrNull()?.let(::onCarCreated)
-        }
-
-        lifecycleScope.launch {
-            permissionDeferred.await()
-
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Log.d("Lifecycle", "CarService start listening")
-                carService.start()
-            }
-
-            Log.d("Lifecycle", "CarService stop listening")
-            carService.stop()
-        }
 
         enableEdgeToEdge()
         setContent {
@@ -84,13 +67,32 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        lifecycleScope.launch {
+            carService.awaitReady().getOrNull()?.let(::onCarCreated)
+            permissionDeferred.await()
+            carService.start()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        application.carService.stop()
+    }
+
     fun onCarCreated(car: NCar<CarSpec, CarState>) {
-        val permissions = car.requiredPermissions.toTypedArray()
+        val permissions = car.requiredPermissions.filter {
+            checkSelfPermission(it) == PackageManager.PERMISSION_DENIED
+        }
+
         if (permissions.isNotEmpty()) {
             Log.d("Car", "Car instance requires permissions: ${permissions.toList()}")
-            requestPermissions(permissions, 1)
+            requestPermissions(permissions.toTypedArray(), 1)
         } else {
             Log.w("Car", "Car instance's required permissions are empty")
+            permissionDeferred.complete(Unit)
         }
     }
 

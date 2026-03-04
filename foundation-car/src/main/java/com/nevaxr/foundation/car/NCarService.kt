@@ -79,11 +79,19 @@ class NCarService<BaseCarSpec: NCarSpec, CarState>(
     }
 
     fun start() {
+        Timber.d("Starting providers...")
         car?.spec?.providers(this)?.forEach { it.start() }
     }
 
     fun stop() {
+        Timber.d("Stopping providers...")
         car?.spec?.providers(this)?.forEach { it.stop() }
+    }
+
+    fun releaseCar() {
+        propertyProviders.values.forEach { it.release() }
+        propertyProviders = emptyMap()
+        _state.tryEmit(Loading())
     }
 
     sealed interface State<BaseCarSpec: NCarSpec, CarState>
