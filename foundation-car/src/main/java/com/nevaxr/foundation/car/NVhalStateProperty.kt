@@ -5,12 +5,14 @@ import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 
 data class NVhalStateProperty<Raw, T>(val property: NVhalProperty<Raw, T>, val initialValue: T) : NCarProperty<T> by property, NCarStateProperty<T> {
     override fun subscribeState(carService: NCarServiceBase, rate: NSensorRate): State<T> {
         val provider = carService.propertyProviderOf(NVhalProvider::class)
 
         val mutableState = mutableStateOf(initialValue)
+      Timber.d("subscribeState ${property.key}")
         provider.subscribe(property.key, rate) { raw ->
             mutableState.value = property.transform(raw)
         }

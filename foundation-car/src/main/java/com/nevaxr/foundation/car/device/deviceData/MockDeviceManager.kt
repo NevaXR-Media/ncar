@@ -1,15 +1,4 @@
-package com.nevaxr.device.deviceData
-
-import com.nevaxr.device.*
-import com.nevaxr.foundation.car.NVhalKey
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import timber.log.Timber
-import kotlin.time.Duration
+package com.nevaxr.foundation.car.device.deviceData
 
 
 //private fun <T> createMockDeviceProperty(
@@ -57,7 +46,7 @@ import kotlin.time.Duration
 //        Timber.d("release called")
 //    }
 //
-//    override fun getDeviceInfo(): com.nevaxr.device.Device {
+//    override fun getDeviceInfo(): com.nevaxr.foundation.car.device.Device {
 //        TODO("Not yet implemented")
 //    }
 //

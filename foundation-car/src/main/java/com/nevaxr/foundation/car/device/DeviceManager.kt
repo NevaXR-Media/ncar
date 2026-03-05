@@ -1,7 +1,8 @@
-package com.nevaxr.device
+package com.nevaxr.foundation.car.device
 
 import android.car.hardware.property.CarPropertyManager.SENSOR_RATE_ONCHANGE
-import com.nevaxr.device.deviceData.DataPoint
+import com.nevaxr.foundation.car.device.deviceData.DataPoint
+import com.nevaxr.foundation.car.device.DeviceProperty
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes

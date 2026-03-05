@@ -1,6 +1,6 @@
-package com.nevaxr.device
+package com.nevaxr.foundation.car.device
 
-import com.nevaxr.device.VehicleType.TOGG
+import com.nevaxr.foundation.car.device.VehicleType.TOGG
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -7,7 +7,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import androidx.annotation.RequiresPermission
-import com.nevaxr.device.LocationState
+import com.nevaxr.foundation.car.device.LocationState
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

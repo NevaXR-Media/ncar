@@ -16,7 +16,7 @@ interface NCarSpecGeneric : NCarSpec {
     val hvacMaxStatus: NCarStateProperty<Boolean>
     val hvacFanSpeed: NCarStateProperty<MeasurementRanged<UnitRpm>>
     val hvacPassengerSpeed: NCarStateProperty<MeasurementRanged<UnitRpm>>
-    val hvacTemperature: NCarStateProperty<Measurement<UnitTemperature>>
+    val hvacTemperature: NCarStateProperty<Array<Measurement<UnitTemperature>>>
     val hvacInteriorTemperature: NCarStateProperty<Measurement<UnitTemperature>>
     val hvacExteriorTemperature: NCarStateProperty<Measurement<UnitTemperature>>
     val seatOccupancy: NCarStateProperty<Array<Boolean>>

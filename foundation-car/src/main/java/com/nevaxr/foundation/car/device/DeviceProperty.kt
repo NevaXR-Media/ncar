@@ -1,4 +1,4 @@
-package com.nevaxr.device
+package com.nevaxr.foundation.car.device
 
 import kotlinx.serialization.Serializable
 

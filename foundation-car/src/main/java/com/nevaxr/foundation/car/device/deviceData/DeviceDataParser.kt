@@ -1,8 +1,8 @@
-package com.nevaxr.device.deviceData
+package com.nevaxr.foundation.car.device.deviceData
 
-import com.nevaxr.device.DeviceProperty
-import com.nevaxr.device.GyroscopeData
-import com.nevaxr.device.LocationState
+import com.nevaxr.foundation.car.device.DeviceProperty
+import com.nevaxr.foundation.car.device.GyroscopeData
+import com.nevaxr.foundation.car.device.LocationState
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
