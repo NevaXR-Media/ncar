@@ -36,6 +36,19 @@ object NCarSpecTogg : NCarSpecGeneric {
   override val deviceId = NVhalProperty.string(NVhalKey.INFO_VIN).optional().withInitial(null)
   override val model = NVhalProperty.string(NVhalKey.INFO_MODEL).optional().withInitial(null)
   override val brand = NVhalProperty.string(NVhalKey.INFO_MAKE).optional().withInitial(null)
+  override val hvacTemperatureAreaIds = NCarHvacTemperatureAreaIds(driver = 49, passenger = 68)
+  override val seatOccupancyAreaIds = NCarQuadAreaIds(
+    frontLeft = 1,
+    frontRight = 4,
+    backLeft = 16,
+    backRight = 64
+  )
+  override val doorAreaIds = NCarQuadAreaIds(
+    frontLeft = 1,
+    frontRight = 4,
+    backLeft = 16,
+    backRight = 64
+  )
 
   override val speedRange = MeasurementUnitRange(0f, 51.3889f, UnitSpeed.metersPerSecond)
   override val speed = NVhalProperty.measurement(NVhalKey.PERF_VEHICLE_SPEED, UnitSpeed.metersPerSecond, speedRange)
@@ -73,24 +86,18 @@ object NCarSpecTogg : NCarSpecGeneric {
     NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
   override val hvacPassengerSpeed =
     NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
-  override val hvacTemperature = NVhalProperty.rawReducer<Float, Array<Measurement<UnitTemperature>>>(
+  override val hvacTemperature = NVhalProperty.rawReducer<Float, NCarHvacTemperatureState>(
     NVhalKey.HVAC_TEMPERATURE_SET,
-    arrayOf(
-      Measurement(0f, UnitTemperature.celsius),
-      Measurement(0f, UnitTemperature.celsius)
+    NCarHvacTemperatureState(
+      driver = Measurement(0f, UnitTemperature.celsius),
+      passenger = Measurement(0f, UnitTemperature.celsius)
     )
   ) { state, property ->
-    val index = when (property.areaId) {
-      HVAC_TEMPERATURE_DRIVER_AREA_ID -> HVAC_TEMPERATURE_DRIVER_INDEX
-      HVAC_TEMPERATURE_PASSENGER_AREA_ID -> HVAC_TEMPERATURE_PASSENGER_INDEX
-      else -> null
+    when (property.areaId) {
+      hvacTemperatureAreaIds.driver -> state.copy(driver = Measurement(property.value, UnitTemperature.celsius))
+      hvacTemperatureAreaIds.passenger -> state.copy(passenger = Measurement(property.value, UnitTemperature.celsius))
+      else -> state
     }
-
-    index?.let {
-      state.copyOf().also { updated ->
-        updated[it] = Measurement(property.value, UnitTemperature.celsius)
-      }
-    } ?: state
   }
   override val hvacInteriorTemperature =
     NVhalProperty.measurement(VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY, UnitTemperature.celsius)
@@ -108,42 +115,26 @@ object NCarSpecTogg : NCarSpecGeneric {
     MeasurementUnitRange(0f, 15_000f, UnitPower.kilowatts)
   )
   override val acceleration = NVhalProperty.constant(0f)
-  override val seatOccupancy = NVhalProperty.rawReducer<Int, Array<Boolean>>(
+  override val seatOccupancy = NVhalProperty.rawReducer<Int, NCarSeatOccupancyState>(
     NVhalKey.SEAT_OCCUPANCY,
-    arrayOf(false, false, false, false)
+    NCarSeatOccupancyState()
   ) { state, property ->
-    val seatIndex = when (property.areaId) {
-      SEAT_FRONT_LEFT_AREA_ID -> 0
-      SEAT_FRONT_RIGHT_AREA_ID -> 1
-      SEAT_BACK_LEFT_AREA_ID -> 2
-      SEAT_BACK_RIGHT_AREA_ID -> 3
-      else -> null
+    when (property.areaId) {
+      seatOccupancyAreaIds.frontLeft -> state.copy(frontLeft = property.value == 1)
+      seatOccupancyAreaIds.frontRight -> state.copy(frontRight = property.value == 1)
+      seatOccupancyAreaIds.backLeft -> state.copy(backLeft = property.value == 1)
+      seatOccupancyAreaIds.backRight -> state.copy(backRight = property.value == 1)
+      else -> state
     }
-
-    seatIndex?.let { index -> state.copyOf().also { updated -> updated[index] = property.value == 1 } } ?: state
   }
   override val steeringWheelAngle = NVhalProperty.constant(Measurement(0f, UnitAngle.degrees))
 
-  private const val HVAC_TEMPERATURE_DRIVER_AREA_ID = 49
-  private const val HVAC_TEMPERATURE_PASSENGER_AREA_ID = 68
-  private const val HVAC_TEMPERATURE_DRIVER_INDEX = 0
-  private const val HVAC_TEMPERATURE_PASSENGER_INDEX = 1
-
-  private const val SEAT_FRONT_LEFT_AREA_ID = 1
-  private const val SEAT_FRONT_RIGHT_AREA_ID = 4
-  private const val SEAT_BACK_LEFT_AREA_ID = 16
-  private const val SEAT_BACK_RIGHT_AREA_ID = 64
-
-  private const val DOOR_FRONT_LEFT_AREA_ID = 1
-  private const val DOOR_FRONT_RIGHT_AREA_ID = 4
-  private const val DOOR_BACK_LEFT_AREA_ID = 16
-  private const val DOOR_BACK_RIGHT_AREA_ID = 64
-  override val doorState = NVhalProperty.rawReducer<Int, _>(NVhalKey.DOOR_POS, NCarDoorState()) { state, property ->
+  override val doorState = NVhalProperty.rawReducer<Int, NCarDoorState>(NVhalKey.DOOR_POS, NCarDoorState()) { state, property ->
     when (property.areaId) {
-      DOOR_FRONT_LEFT_AREA_ID -> state.copy(frontLeft = property.value == 1)
-      DOOR_FRONT_RIGHT_AREA_ID -> state.copy(frontRight = property.value == 1)
-      DOOR_BACK_LEFT_AREA_ID -> state.copy(backLeft = property.value == 1)
-      DOOR_BACK_RIGHT_AREA_ID -> state.copy(backRight = property.value == 1)
+      doorAreaIds.frontLeft -> state.copy(frontLeft = property.value == 1)
+      doorAreaIds.frontRight -> state.copy(frontRight = property.value == 1)
+      doorAreaIds.backLeft -> state.copy(backLeft = property.value == 1)
+      doorAreaIds.backRight -> state.copy(backRight = property.value == 1)
       else -> state
     }
   }
