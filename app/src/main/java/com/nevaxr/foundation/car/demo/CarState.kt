@@ -1,16 +1,14 @@
 package com.nevaxr.foundation.car.demo
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.nevaxr.foundation.car.NCar
-import com.nevaxr.foundation.car.NCarSpecGeneric
-import com.nevaxr.foundation.car.NSensorRate
 import com.nevaxr.foundation.car.NCarGear
+import com.nevaxr.foundation.car.NCarWindowState
+import com.nevaxr.foundation.car.NSensorRate
 import com.nevaxr.foundation.car.NCarSpecTogg
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.mapNotNull
+import com.nevaxr.foundation.car.UnitSpeed
+import com.nevaxr.foundation.car.device.NCarDoorState
 
 @Stable
 class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
@@ -39,8 +37,29 @@ class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
     val frunkAngle by car.stateOf(car.spec.frunkAngle)
     val windowState by car.stateOf(car.spec.windowState)
     val ambientLight by car.stateOf(car.spec.ambientLight)
+
     suspend fun setAmbientLight(hex: String) {
         car.setProperty(car.spec.ambientLightControl, hex)
+    }
+
+    val demoSpeedMaxKmh: Float
+        get() = car.spec.speedRange.unit.convert(car.spec.speedRange.endInclusive, UnitSpeed.kilometersPerHour)
+
+    suspend fun setDemoSpeedKmh(kmh: Float) {
+        val speedMps = UnitSpeed.kilometersPerHour.convert(kmh, UnitSpeed.metersPerSecond)
+        car.setProperty(car.spec.demoSpeedControl, speedMps)
+    }
+
+    suspend fun setDemoGear(gear: NCarGear) {
+        car.setProperty(car.spec.demoGearControl, gear)
+    }
+
+    suspend fun setDemoDoorState(state: NCarDoorState) {
+        car.setProperty(car.spec.demoDoorControl, state)
+    }
+
+    suspend fun setDemoWindowState(state: NCarWindowState) {
+        car.setProperty(car.spec.demoWindowControl, state)
     }
 
     private val deviceId by car.reader(car.spec.deviceId)

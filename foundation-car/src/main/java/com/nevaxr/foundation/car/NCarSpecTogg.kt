@@ -1,5 +1,6 @@
 package com.nevaxr.foundation.car
 
+import android.car.hardware.CarPropertyValue
 import com.nevaxr.foundation.car.device.NCarDoorState
 import timber.log.Timber
 
@@ -22,15 +23,30 @@ object NCarSpecTogg : NCarSpecGeneric {
   }
 
   override val specName = "Togg"
-  override fun providers(carService: NCarServiceBase) = listOf(
-    carService.propertyProviderOf(NVhalProvider::class)
-  )
+  override fun providers(carService: NCarServiceBase) = buildList {
+    carService.propertyProviderOfOrNull(NVhalProvider::class)?.let(::add)
+    carService.propertyProviderOfOrNull(DemoPropertyProvider::class)?.let(::add)
+  }
 
   override suspend fun identify(carService: NCarServiceBase): Boolean {
-    val brand = brand.getProperty(carService)
-    val model = model.getProperty(carService)
+    val hasDemoProvider = carService.propertyProviderOfOrNull(DemoPropertyProvider::class) != null
+    val hasNvhalProvider = carService.propertyProviderOfOrNull(NVhalProvider::class) != null
+    if (!hasNvhalProvider) {
+      Timber.d("NVhalProvider is unavailable, falling back to demo provider identification path")
+      return hasDemoProvider
+    }
+
+    val brand = runCatching { brand.getProperty(carService) }.getOrNull()
+    val model = runCatching { model.getProperty(carService) }.getOrNull()
     Timber.d("Checking if the car is Togg, brand: ${brand ?: "null"}, model: ${model ?: "null"}")
-    return brand == NCAR_TOGG_BRAND
+    if (brand == NCAR_TOGG_BRAND) {
+      return true
+    }
+    val canUseDemoFallback = hasDemoProvider && (brand == null || model == null)
+    if (canUseDemoFallback) {
+      Timber.d("TOGG brand/model is unavailable; using demo fallback provider")
+    }
+    return canUseDemoFallback
   }
 
   override val deviceId = NVhalProperty.string(NVhalKey.INFO_VIN).optional().withInitial(null)
@@ -51,16 +67,68 @@ object NCarSpecTogg : NCarSpecGeneric {
   )
 
   override val speedRange = MeasurementUnitRange(0f, 51.3889f, UnitSpeed.metersPerSecond)
-  override val speed = NVhalProperty.measurement(NVhalKey.PERF_VEHICLE_SPEED, UnitSpeed.metersPerSecond, speedRange)
-  override val gear = NVhalProperty.int(NVhalKey.GEAR_SELECTION, NCarGear.Park) { rawGear: Int ->
-    when (rawGear) {
-      1 -> NCarGear.Neutral
-      2 -> NCarGear.Reverse
-      4 -> NCarGear.Park
-      8 -> NCarGear.Drive
-      else -> NCarGear.Park
-    }
-  }
+  override val speed = FallbackStateProperty(
+    displayName = NVhalKey.PERF_VEHICLE_SPEED.name,
+    requiredPermissions = NVhalKey.PERF_VEHICLE_SPEED.permissions,
+    initialValue = MeasurementRanged(0f, UnitSpeed.metersPerSecond, speedRange),
+    subscribePrimary = { carService, rate, emit ->
+      carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
+        provider.subscribe<Number>(NVhalKey.PERF_VEHICLE_SPEED, rate) { property ->
+          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
+          emit(MeasurementRanged(property.value.toFloat(), UnitSpeed.metersPerSecond, speedRange))
+        }
+      }
+    },
+    subscribeFallback = { carService, _, emit ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.subscribeSpeed { speed ->
+        emit(MeasurementRanged(speed, UnitSpeed.metersPerSecond, speedRange))
+      }
+    },
+    readPrimary = { carService ->
+      val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
+        ?: error("NVhalProvider is unavailable")
+      val property = provider.getProperty<Number>(NVhalKey.PERF_VEHICLE_SPEED)
+      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
+        error("Speed is not available from primary provider")
+      }
+      MeasurementRanged(property.value.toFloat(), UnitSpeed.metersPerSecond, speedRange)
+    },
+    readFallback = { carService ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      MeasurementRanged(provider.currentSpeedMetersPerSecond(), UnitSpeed.metersPerSecond, speedRange)
+    },
+  )
+  override val gear = FallbackStateProperty(
+    displayName = NVhalKey.GEAR_SELECTION.name,
+    requiredPermissions = NVhalKey.GEAR_SELECTION.permissions,
+    initialValue = NCarGear.Park,
+    subscribePrimary = { carService, rate, emit ->
+      carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
+        provider.subscribe<Int>(NVhalKey.GEAR_SELECTION, rate) { property ->
+          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
+          emit(rawGearToNCarGear(property.value))
+        }
+      }
+    },
+    subscribeFallback = { carService, _, emit ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.subscribeGear(emit)
+    },
+    readPrimary = { carService ->
+      val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
+        ?: error("NVhalProvider is unavailable")
+      val property = provider.getProperty<Int>(NVhalKey.GEAR_SELECTION)
+      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
+        error("Gear is not available from primary provider")
+      }
+      rawGearToNCarGear(property.value)
+    },
+    readFallback = { carService ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.currentGear()
+    },
+  )
 
   enum class DrivingMode { ECO, COMFORT, SPORT, UNKNOWN }
 
@@ -129,15 +197,38 @@ object NCarSpecTogg : NCarSpecGeneric {
   }
   override val steeringWheelAngle = NVhalProperty.constant(Measurement(0f, UnitAngle.degrees))
 
-  override val doorState = NVhalProperty.rawReducer<Int, NCarDoorState>(NVhalKey.DOOR_POS, NCarDoorState()) { state, property ->
-    when (property.areaId) {
-      doorAreaIds.frontLeft -> state.copy(frontLeft = property.value == 1)
-      doorAreaIds.frontRight -> state.copy(frontRight = property.value == 1)
-      doorAreaIds.backLeft -> state.copy(backLeft = property.value == 1)
-      doorAreaIds.backRight -> state.copy(backRight = property.value == 1)
-      else -> state
-    }
-  }
+  override val doorState = FallbackStateProperty(
+    displayName = NVhalKey.DOOR_POS.name,
+    requiredPermissions = NVhalKey.DOOR_POS.permissions,
+    initialValue = NCarDoorState(),
+    subscribePrimary = { carService, rate, emit ->
+      var current = NCarDoorState()
+      carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
+        provider.subscribe<Int>(NVhalKey.DOOR_POS, rate) { property ->
+          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
+          current = reduceDoorState(current, property)
+          emit(current)
+        }
+      }
+    },
+    subscribeFallback = { carService, _, emit ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.subscribeDoorState(emit)
+    },
+    readPrimary = { carService ->
+      val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
+        ?: error("NVhalProvider is unavailable")
+      val property = provider.getProperty<Int>(NVhalKey.DOOR_POS)
+      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
+        error("Door state is not available from primary provider")
+      }
+      reduceDoorState(NCarDoorState(), property)
+    },
+    readFallback = { carService ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.currentDoorState()
+    },
+  )
 
   private const val TRUNK_AREA_ID = 536870912
   override val trunkState = NVhalProperty.rawReducer<Int, Boolean>(NVhalKey.DOOR_POS, false) { state, property ->
@@ -189,16 +280,51 @@ object NCarSpecTogg : NCarSpecGeneric {
   private const val WINDOW_FRONT_RIGHT_AREA_ID = 64
   private const val WINDOW_BACK_LEFT_AREA_ID = 256
   private const val WINDOW_BACK_RIGHT_AREA_ID = 1024
-  override val windowState =
-    NVhalProperty.rawReducer<Float, _>(NVhalKey.WINDOW_POS, NCarWindowState()) { state, property ->
-      when (property.areaId) {
-        WINDOW_FRONT_LEFT_AREA_ID -> state.copy(frontLeft = property.value)
-        WINDOW_FRONT_RIGHT_AREA_ID -> state.copy(frontRight = property.value)
-        WINDOW_BACK_LEFT_AREA_ID -> state.copy(backLeft = property.value)
-        WINDOW_BACK_RIGHT_AREA_ID -> state.copy(backRight = property.value)
-        else -> state
+  override val windowState = FallbackStateProperty(
+    displayName = NVhalKey.WINDOW_POS.name,
+    requiredPermissions = NVhalKey.WINDOW_POS.permissions,
+    initialValue = NCarWindowState(),
+    subscribePrimary = { carService, rate, emit ->
+      var current = NCarWindowState()
+      carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
+        provider.subscribe<Float>(NVhalKey.WINDOW_POS, rate) { property ->
+          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
+          current = reduceWindowState(current, property)
+          emit(current)
+        }
       }
-    }
+    },
+    subscribeFallback = { carService, _, emit ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.subscribeWindowState(emit)
+    },
+    readPrimary = { carService ->
+      val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
+        ?: error("NVhalProvider is unavailable")
+      val property = provider.getProperty<Float>(NVhalKey.WINDOW_POS)
+      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
+        error("Window state is not available from primary provider")
+      }
+      reduceWindowState(NCarWindowState(), property)
+    },
+    readFallback = { carService ->
+      val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
+      provider.currentWindowState()
+    },
+  )
+
+  val demoSpeedControl = DemoWritableProperty<Float>("Demo Speed") { provider, value ->
+    provider.setSpeedMetersPerSecond(value)
+  }
+  val demoGearControl = DemoWritableProperty<NCarGear>("Demo Gear") { provider, value ->
+    provider.setGear(value)
+  }
+  val demoDoorControl = DemoWritableProperty<NCarDoorState>("Demo Doors") { provider, value ->
+    provider.setDoorState(value)
+  }
+  val demoWindowControl = DemoWritableProperty<NCarWindowState>("Demo Windows") { provider, value ->
+    provider.setWindowState(value)
+  }
 
   private const val AMBIENT_COLOR_NONE = 0
   private const val AMBIENT_COLOR_TURQUOISE = 1
@@ -267,5 +393,35 @@ object NCarSpecTogg : NCarSpecGeneric {
     val dg = c1.second - c2.second
     val db = c1.third - c2.third
     return dr * dr + dg * dg + db * db
+  }
+
+  private fun rawGearToNCarGear(rawGear: Int): NCarGear {
+    return when (rawGear) {
+      1 -> NCarGear.Neutral
+      2 -> NCarGear.Reverse
+      4 -> NCarGear.Park
+      8 -> NCarGear.Drive
+      else -> NCarGear.Park
+    }
+  }
+
+  private fun reduceDoorState(state: NCarDoorState, property: CarPropertyValue<Int>): NCarDoorState {
+    return when (property.areaId) {
+      doorAreaIds.frontLeft -> state.copy(frontLeft = property.value == 1)
+      doorAreaIds.frontRight -> state.copy(frontRight = property.value == 1)
+      doorAreaIds.backLeft -> state.copy(backLeft = property.value == 1)
+      doorAreaIds.backRight -> state.copy(backRight = property.value == 1)
+      else -> state
+    }
+  }
+
+  private fun reduceWindowState(state: NCarWindowState, property: CarPropertyValue<Float>): NCarWindowState {
+    return when (property.areaId) {
+      WINDOW_FRONT_LEFT_AREA_ID -> state.copy(frontLeft = property.value)
+      WINDOW_FRONT_RIGHT_AREA_ID -> state.copy(frontRight = property.value)
+      WINDOW_BACK_LEFT_AREA_ID -> state.copy(backLeft = property.value)
+      WINDOW_BACK_RIGHT_AREA_ID -> state.copy(backRight = property.value)
+      else -> state
+    }
   }
 }

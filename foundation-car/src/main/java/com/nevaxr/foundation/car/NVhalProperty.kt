@@ -25,7 +25,7 @@ data class NVhalIntOutputProperty<T>(val key: NVhalKey, val transform: (T) -> In
   override val requiredPermissions = key.permissions
 
   override suspend fun write(carService: NCarServiceBase, value: T) {
-    val provider = carService.propertyProviderOf(NVhalProvider::class)
+    val provider = carService.propertyProviderOfOrNull(NVhalProvider::class) ?: return
     val rawValue = transform(value)
     provider.setIntProperty(key, rawValue)
   }
@@ -37,7 +37,7 @@ data class NVhalFloatOutputProperty<T>(val key: NVhalKey, val transform: (T) -> 
   override val requiredPermissions = key.permissions
 
   override suspend fun write(carService: NCarServiceBase, value: T) {
-    val provider = carService.propertyProviderOf(NVhalProvider::class)
+    val provider = carService.propertyProviderOfOrNull(NVhalProvider::class) ?: return
     val rawValue = transform(value)
     provider.setFloatProperty(key, rawValue)
   }
@@ -49,8 +49,11 @@ data class NVhalProperty<Raw, T>(val key: NVhalKey, val transform: (CarPropertyV
   override val requiredPermissions: Set<String>? = key.permissions
 
   override fun subscribe(carService: NCarServiceBase, rate: NSensorRate): SharedFlow<T> {
-    val provider = carService.propertyProviderOf(NVhalProvider::class)
+    val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
     val mutableFlow = MutableSharedFlow<T>()
+    if (provider == null) {
+      return mutableFlow.asSharedFlow()
+    }
     provider.subscribe(key, rate) { propertyValue ->
       mutableFlow.emit(transform(propertyValue))
     }
@@ -59,7 +62,8 @@ data class NVhalProperty<Raw, T>(val key: NVhalKey, val transform: (CarPropertyV
   }
 
   override suspend fun getProperty(carService: NCarServiceBase): T {
-    val provider = carService.propertyProviderOf(NVhalProvider::class)
+    val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
+      ?: error("NVhalProvider is not available for ${key.name}")
     val propertyValue = provider.getProperty<Raw>(key)
     return transform(propertyValue)
   }

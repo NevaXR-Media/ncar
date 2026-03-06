@@ -9,9 +9,8 @@ import timber.log.Timber
 
 data class NVhalStateProperty<Raw, T>(val property: NVhalProperty<Raw, T>, val initialValue: T) : NCarProperty<T> by property, NCarStateProperty<T> {
     override fun subscribeState(carService: NCarServiceBase, rate: NSensorRate): State<T> {
-        val provider = carService.propertyProviderOf(NVhalProvider::class)
-
         val mutableState = mutableStateOf(initialValue)
+        val provider = carService.propertyProviderOfOrNull(NVhalProvider::class) ?: return mutableState
       Timber.d("subscribeState ${property.key}")
         provider.subscribe(property.key, rate) { raw ->
             mutableState.value = property.transform(raw)
@@ -21,9 +20,8 @@ data class NVhalStateProperty<Raw, T>(val property: NVhalProperty<Raw, T>, val i
     }
 
     override fun subscribeStateFlow(carService: NCarServiceBase, rate: NSensorRate): StateFlow<T> {
-        val provider = carService.propertyProviderOf(NVhalProvider::class)
-
         val mutableStateFlow = MutableStateFlow(initialValue)
+        val provider = carService.propertyProviderOfOrNull(NVhalProvider::class) ?: return mutableStateFlow.asStateFlow()
         provider.subscribe(property.key, rate) { raw ->
             mutableStateFlow.emit(property.transform(raw))
         }

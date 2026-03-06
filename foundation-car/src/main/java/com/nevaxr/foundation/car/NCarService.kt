@@ -12,6 +12,7 @@ import kotlin.reflect.KClass
 interface NCarServiceBase {
 
   fun <T : NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T
+  fun <T : NCarPropertyProvider> propertyProviderOfOrNull(klass: KClass<T>): T?
 }
 
 class NCarService<BaseCarSpec : NCarSpec, CarState>(
@@ -39,6 +40,10 @@ class NCarService<BaseCarSpec : NCarSpec, CarState>(
   private var propertyProviders = mapOf<KClass<*>, NCarPropertyProvider>()
   override fun <T : NCarPropertyProvider> propertyProviderOf(klass: KClass<T>): T {
     return propertyProviders[klass] as T
+  }
+
+  override fun <T : NCarPropertyProvider> propertyProviderOfOrNull(klass: KClass<T>): T? {
+    return propertyProviders[klass] as? T
   }
 
   fun loadCar() {
@@ -155,6 +160,7 @@ class NCarService<BaseCarSpec : NCarSpec, CarState>(
       return Builder<NCarSpecTogg, CarState>(scope)
         .addCarSpec(NCarSpecTogg)
         .addProvider { NVhalProvider(context, scope, true) }
+        .addProvider { DemoPropertyProvider() }
         .build(carStateBuilder)
     }
   }

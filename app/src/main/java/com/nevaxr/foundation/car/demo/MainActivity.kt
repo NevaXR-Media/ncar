@@ -34,7 +34,14 @@ class MainActivity : ComponentActivity() {
   val requestPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
   ) { results ->
-    if (results.all { it.value }) {
+    val deniedPermissions = results.filterValues { granted -> !granted }.keys
+    if (deniedPermissions.isNotEmpty()) {
+      Timber.tag("Lifecycle").w(
+        "Some car permissions denied; continuing with available providers: %s",
+        deniedPermissions.toList().toString()
+      )
+    }
+    if (!permissionDeferred.isCompleted) {
       permissionDeferred.complete(Unit)
     }
   }
