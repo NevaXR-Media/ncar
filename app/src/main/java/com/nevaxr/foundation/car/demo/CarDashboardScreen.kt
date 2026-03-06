@@ -301,7 +301,7 @@ private fun DemoControlPanel(state: CarState, onClose: () -> Unit, modifier: Mod
         Text(
           text = "Demo Fallback Controls",
           modifier = Modifier.weight(1f),
-          style = MaterialTheme.typography.titleMedium,
+          style = MaterialTheme.typography.titleLarge,
           color = DemoNeoYellowS500,
           fontWeight = FontWeight.SemiBold,
         )
@@ -512,7 +512,7 @@ private fun PropertyCard(card: DashboardCard) {
     ) {
       Text(
         text = card.title,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.SemiBold,
         color = DemoNeoYellowS500,
       )
@@ -587,4 +587,3 @@ private fun Float.toCompactPercent(): String {
 }
 
 private fun Float.toPercentValue(): Float = if (this <= 1f) this * 100f else this
-
