@@ -1,4 +1,4 @@
-package com.nevaxr.device.deviceData
+package com.nevaxr.foundation.car.device.deviceData
 
 enum class DeviceType {
     TOGG_T10X_RWD,

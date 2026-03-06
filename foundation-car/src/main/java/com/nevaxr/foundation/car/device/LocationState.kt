@@ -1,4 +1,4 @@
-package com.nevaxr.device 
+package com.nevaxr.foundation.car.device 
 
 data class LocationState(
     val longitude: Double = 0.0,

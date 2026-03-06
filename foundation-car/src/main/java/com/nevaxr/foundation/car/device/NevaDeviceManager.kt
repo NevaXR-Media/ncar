@@ -1,4 +1,4 @@
-package com.nevaxr.device
+package com.nevaxr.foundation.car.device
 
 import android.Manifest
 import android.car.Car
@@ -7,10 +7,10 @@ import android.car.hardware.property.CarPropertyManager
 import android.car.hardware.property.CarPropertyManager.SENSOR_RATE_ONCHANGE
 import android.content.Context
 import androidx.annotation.RequiresPermission
-import com.nevaxr.device.deviceData.DEFAULT_DEVICE_DATA
-import com.nevaxr.device.deviceData.DataPoint
-import com.nevaxr.device.deviceData.DeviceDataParser
-import com.nevaxr.device.deviceData.DeviceType
+import com.nevaxr.foundation.car.device.deviceData.DEFAULT_DEVICE_DATA
+import com.nevaxr.foundation.car.device.deviceData.DataPoint
+import com.nevaxr.foundation.car.device.deviceData.DeviceDataParser
+import com.nevaxr.foundation.car.device.deviceData.DeviceType
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*

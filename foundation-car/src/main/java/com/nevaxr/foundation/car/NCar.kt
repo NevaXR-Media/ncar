@@ -1,6 +1,7 @@
 package com.nevaxr.foundation.car
 
 import kotlinx.coroutines.CoroutineScope
+import timber.log.Timber
 
 class NCar<BaseCarSpec: NCarSpec, CarState>(
     val scope: CoroutineScope,
@@ -20,7 +21,9 @@ class NCar<BaseCarSpec: NCarSpec, CarState>(
 
     fun <T> stateOf(property: NCarStateProperty<T>, sensorRate: NSensorRate = NSensorRate.OnChange) =
         property.subscribeState(service, sensorRate).also {
+          Timber.d("NCar state of property ${property.displayName} -> ${property.requiredPermissions}")
             property.requiredPermissions?.let(_requiredPermissions::addAll)
+          Timber.d("NCar state of property _requiredPermissions $_requiredPermissions")
         }
 
     fun <T> stateFlowOf(property: NCarStateProperty<T>, sensorRate: NSensorRate = NSensorRate.OnChange) =

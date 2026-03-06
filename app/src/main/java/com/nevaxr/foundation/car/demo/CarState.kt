@@ -4,7 +4,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.nevaxr.foundation.car.NCar
-import com.nevaxr.foundation.car.NCarAmbientColor
 import com.nevaxr.foundation.car.NCarSpecGeneric
 import com.nevaxr.foundation.car.NSensorRate
 import com.nevaxr.foundation.car.NCarGear
@@ -40,8 +39,8 @@ class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
     val frunkAngle by car.stateOf(car.spec.frunkAngle)
     val windowState by car.stateOf(car.spec.windowState)
     val ambientLight by car.stateOf(car.spec.ambientLight)
-    suspend fun setAmbientLight(color: NCarAmbientColor) {
-        car.setProperty(car.spec.ambientLightControl, color)
+    suspend fun setAmbientLight(hex: String) {
+        car.setProperty(car.spec.ambientLightControl, hex)
     }
 
     private val deviceId by car.reader(car.spec.deviceId)
@@ -62,4 +61,3 @@ data class CarInfo(
     val brand: String?,
     val model: String?,
 )
-

@@ -1,4 +1,4 @@
-package com.nevaxr.device.deviceData
+package com.nevaxr.foundation.car.device.deviceData
 
 const val DEFAULT_DEVICE_DATA = """{
   "devices": [

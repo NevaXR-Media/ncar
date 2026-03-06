@@ -1,4 +1,4 @@
-package com.nevaxr.device.deviceData
+package com.nevaxr.foundation.car.device.deviceData
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer

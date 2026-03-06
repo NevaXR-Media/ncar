@@ -3,8 +3,6 @@ package com.nevaxr.foundation.car
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import com.nevaxr.device.deviceData.convertUnit
-import java.util.Locale
 
 data class Measurement<U : MeasurementUnit>(val value: Float, val unit: U)
 data class MeasurementUnitRange<U : MeasurementUnit>(val start: Float, val endInclusive: Float, val unit: U)
