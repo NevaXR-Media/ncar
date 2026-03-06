@@ -160,6 +160,17 @@ The repository already separates unsigned and signed application variants:
 - Debug build: unsigned test variant with application ID suffix `.unsigned`
 - Release build: signed variant with application ID suffix `.signed`
 
+Current confirmed status for the unsigned application:
+
+- `gear` is available.
+- `hvacExteriorTemperature` is available.
+- All other currently defined TOGG signals should be treated as unavailable on the unsigned app until proven otherwise.
+
+Current confirmed status for the signed application:
+
+- All other currently defined TOGG signals in this repository are accessible with the signed APK.
+- This includes both standard Android Automotive properties that are blocked on the unsigned build and the TOGG vendor-specific properties currently mapped in `NCarSpecTogg`.
+
 The signed release variant is the correct place to validate privileged or vendor-restricted TOGG properties. However, this repository does not yet contain the final verified matrix of what is readable or writable on TOGG when the APK is signed with the required key.
 
 Use the following section as the project record for that validation.
@@ -170,11 +181,19 @@ This section is intentionally prepared for later completion.
 
 | Data / Capability | Source Class | Access with Unsigned APK | Access with Signed APK | Notes / Evidence |
 | --- | --- | --- | --- | --- |
-| Standard Android Automotive properties | `NVhalKey` based | Pending validation | Pending validation | Fill after device test |
-| TOGG vendor drive mode | `VendorKeys.DRIVE_MODE_PROPERTY` | Pending validation | Pending validation | Requires vendor extension permission |
-| TOGG cabin current temperature | `VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY` | Pending validation | Pending validation | Requires vendor extension permission |
-| TOGG ambient light read | `VendorKeys.AMBIENT_LIGHT_READ` | Pending validation | Pending validation | Requires vendor extension permission |
-| TOGG ambient light write | `VendorKeys.AMBIENT_LIGHT_WRITE` | Pending validation | Pending validation | Requires vendor extension permission and write-path validation |
+| Gear | `NVhalKey.GEAR_SELECTION` | Available | Available | Confirmed on both unsigned and signed app |
+| Exterior temperature | `NVhalKey.ENV_OUTSIDE_TEMPERATURE` | Available | Available | Exposed as `hvacExteriorTemperature` |
+| Speed | `NVhalKey.PERF_VEHICLE_SPEED` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| Battery level | `NVhalKey.EV_BATTERY_LEVEL` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| Battery capacity | `NVhalKey.INFO_EV_BATTERY_CAPACITY` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| EV charging rate | `NVhalKey.EV_BATTERY_INSTANTANEOUS_CHARGE_RATE` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| HVAC state and fan controls | Standard HVAC `NVhalKey` based properties | Unavailable | Available | Only exterior temperature is available on unsigned app |
+| Seat occupancy | `NVhalKey.SEAT_OCCUPANCY` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| Doors, trunk, frunk, windows | `NVhalKey.DOOR_POS` / `NVhalKey.WINDOW_POS` | Unavailable | Available | Not available on unsigned app, available on signed app |
+| TOGG vendor drive mode | `VendorKeys.DRIVE_MODE_PROPERTY` | Unavailable | Available | Requires vendor extension permission |
+| TOGG cabin current temperature | `VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY` | Unavailable | Available | Requires vendor extension permission |
+| TOGG ambient light read | `VendorKeys.AMBIENT_LIGHT_READ` | Unavailable | Available | Requires vendor extension permission |
+| TOGG ambient light write | `VendorKeys.AMBIENT_LIGHT_WRITE` | Unavailable | Available | Requires vendor extension permission and signed write access |
 
 Recommended completion rule for this table:
 
