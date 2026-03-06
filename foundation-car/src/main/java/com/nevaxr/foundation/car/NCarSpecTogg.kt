@@ -209,33 +209,63 @@ object NCarSpecTogg : NCarSpecGeneric {
   private const val AMBIENT_COLOR_BLUE = 6
   private const val AMBIENT_COLOR_GREEN = 7
   private const val AMBIENT_COLOR_WHITE = 8
+  private data class AmbientPaletteEntry(
+    val order: Int,
+    val color: NCarAmbientColor,
+    val hex: String
+  )
+
+  private val ambientPalette = listOf(
+    AmbientPaletteEntry(AMBIENT_COLOR_NONE, NCarAmbientColor.NONE, "#000000"),
+    AmbientPaletteEntry(AMBIENT_COLOR_TURQUOISE, NCarAmbientColor.TURQUOISE, "#40E0D0"),
+    AmbientPaletteEntry(AMBIENT_COLOR_ORANGE, NCarAmbientColor.ORANGE, "#FFA500"),
+    AmbientPaletteEntry(AMBIENT_COLOR_YELLOW, NCarAmbientColor.YELLOW, "#FFFF00"),
+    AmbientPaletteEntry(AMBIENT_COLOR_PURPLE, NCarAmbientColor.PURPLE, "#800080"),
+    AmbientPaletteEntry(AMBIENT_COLOR_RED, NCarAmbientColor.RED, "#FF0000"),
+    AmbientPaletteEntry(AMBIENT_COLOR_BLUE, NCarAmbientColor.BLUE, "#0000FF"),
+    AmbientPaletteEntry(AMBIENT_COLOR_GREEN, NCarAmbientColor.GREEN, "#008000"),
+    AmbientPaletteEntry(AMBIENT_COLOR_WHITE, NCarAmbientColor.WHITE, "#FFFFFF"),
+  )
+
+  override val ambientLightSupportedHexColors = ambientPalette.map { it.hex }
   override val ambientLight = NVhalProperty.int(VendorKeys.AMBIENT_LIGHT_READ, NCarAmbientColor.NONE) { raw ->
-    when (raw) {
-      AMBIENT_COLOR_NONE -> NCarAmbientColor.NONE
-      AMBIENT_COLOR_TURQUOISE -> NCarAmbientColor.TURQUOISE
-      AMBIENT_COLOR_ORANGE -> NCarAmbientColor.ORANGE
-      AMBIENT_COLOR_YELLOW -> NCarAmbientColor.YELLOW
-      AMBIENT_COLOR_PURPLE -> NCarAmbientColor.PURPLE
-      AMBIENT_COLOR_RED -> NCarAmbientColor.RED
-      AMBIENT_COLOR_BLUE -> NCarAmbientColor.BLUE
-      AMBIENT_COLOR_GREEN -> NCarAmbientColor.GREEN
-      AMBIENT_COLOR_WHITE -> NCarAmbientColor.WHITE
-      else -> NCarAmbientColor.NONE
-    }
+    ambientPalette.firstOrNull { it.order == raw }?.color ?: NCarAmbientColor.NONE
   }
 
   override val ambientLightControl =
-    NVhalProperty.intOutput<NCarAmbientColor>(VendorKeys.AMBIENT_LIGHT_WRITE) { ambientColor ->
-      when (ambientColor) {
-        NCarAmbientColor.NONE -> AMBIENT_COLOR_NONE
-        NCarAmbientColor.TURQUOISE -> AMBIENT_COLOR_TURQUOISE
-        NCarAmbientColor.ORANGE -> AMBIENT_COLOR_ORANGE
-        NCarAmbientColor.YELLOW -> AMBIENT_COLOR_YELLOW
-        NCarAmbientColor.PURPLE -> AMBIENT_COLOR_PURPLE
-        NCarAmbientColor.RED -> AMBIENT_COLOR_RED
-        NCarAmbientColor.BLUE -> AMBIENT_COLOR_BLUE
-        NCarAmbientColor.GREEN -> AMBIENT_COLOR_GREEN
-        NCarAmbientColor.WHITE -> AMBIENT_COLOR_WHITE
-      }
+    NVhalProperty.intOutput<String>(VendorKeys.AMBIENT_LIGHT_WRITE) { hex ->
+      nearestAmbientColorOrder(hex)
     }
+
+  private fun nearestAmbientColorOrder(hex: String): Int {
+    val target = hexToRgbOrNull(hex) ?: return AMBIENT_COLOR_NONE
+    return ambientPalette.minByOrNull { entry ->
+      colorDistanceSquared(target, hexToRgbOrNull(entry.hex) ?: Triple(0, 0, 0))
+    }?.order ?: AMBIENT_COLOR_NONE
+  }
+
+  private fun hexToRgbOrNull(hex: String): Triple<Int, Int, Int>? {
+    val cleaned = hex.trim().removePrefix("#")
+    val normalized = when (cleaned.length) {
+      3 -> cleaned.flatMap { listOf(it, it) }.joinToString("")
+      4 -> cleaned.substring(1).flatMap { listOf(it, it) }.joinToString("")
+      6 -> cleaned
+      8 -> cleaned.substring(2)
+      else -> return null
+    }
+
+    val colorInt = normalized.toIntOrNull(16) ?: return null
+    return Triple(
+      (colorInt shr 16) and 0xFF,
+      (colorInt shr 8) and 0xFF,
+      colorInt and 0xFF
+    )
+  }
+
+  private fun colorDistanceSquared(c1: Triple<Int, Int, Int>, c2: Triple<Int, Int, Int>): Int {
+    val dr = c1.first - c2.first
+    val dg = c1.second - c2.second
+    val db = c1.third - c2.third
+    return dr * dr + dg * dg + db * db
+  }
 }

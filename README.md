@@ -81,7 +81,7 @@ The TOGG spec currently implements the following data categories.
 | Acceleration | `acceleration` | Constant placeholder | Not yet backed by an actual TOGG property in current code |
 | Driving mode | `drivingMode` | TOGG vendor property | Mapped to `ECO`, `COMFORT`, `SPORT`, `UNKNOWN` |
 | Ambient light read | `ambientLight` | TOGG vendor property | Mapped to `NCarAmbientColor` |
-| Ambient light write | `ambientLightControl` | TOGG vendor property | Writable control path for changing cabin ambient color |
+| Ambient light write | `ambientLightControl` | TOGG vendor property | Writable hex input (`String`) converted to nearest supported car ambient color |
 
 ## Source and Transformation Rules
 
@@ -99,32 +99,28 @@ This keeps the source-of-truth for each field close to its property declaration 
 
 Ambient light control is currently implemented only through the TOGG vendor property write path.
 
-The writable property is exposed as `ambientLightControl`, and the accepted values are the `NCarAmbientColor` enum:
+The writable property is exposed as `ambientLightControl`, and the input type is hex color string (`String`), for example:
 
-- `NONE`
-- `TURQUOISE`
-- `ORANGE`
-- `YELLOW`
-- `PURPLE`
-- `RED`
-- `BLUE`
-- `GREEN`
-- `WHITE`
+- `#0000FF`
+- `#40E0D0`
+- `#FF0000`
+
+The spec also exposes `ambientLightSupportedHexColors`, which lists the palette supported by the active car spec.
 
 To change the ambient light, call `setProperty` on the active `NCar` instance or use the helper already defined in the demo `CarState`.
 
 Example through the demo state object:
 
 ```kotlin
-suspend fun setAmbientLight(color: NCarAmbientColor) {
-    car.setProperty(car.spec.ambientLightControl, color)
+suspend fun setAmbientLight(hex: String) {
+    car.setProperty(car.spec.ambientLightControl, hex)
 }
 ```
 
 Example usage:
 
 ```kotlin
-carState.setAmbientLight(NCarAmbientColor.BLUE)
+carState.setAmbientLight("#1E90FF")
 ```
 
 Technical mapping details:
@@ -132,7 +128,9 @@ Technical mapping details:
 - Read source: `VendorKeys.AMBIENT_LIGHT_READ`
 - Write source: `VendorKeys.AMBIENT_LIGHT_WRITE`
 - Permission: `android.car.permission.CAR_VENDOR_EXTENSION`
-- Output type: `NCarAmbientColor`
+- Read output type: `NCarAmbientColor`
+- Write input type: `String` (hex color)
+- Conversion rule: input hex is mapped to the nearest supported car palette color before writing vendor order ID
 
 Operational note:
 

@@ -36,5 +36,6 @@ interface NCarSpecGeneric : NCarSpec {
     val frunkAngle: NCarStateProperty<Measurement<UnitAngle>>
     val windowState: NCarStateProperty<NCarWindowState>
     val ambientLight: NCarStateProperty<NCarAmbientColor>
-    val ambientLightControl: NCarPropertyWritable<NCarAmbientColor>
+    val ambientLightSupportedHexColors: List<String>
+    val ambientLightControl: NCarPropertyWritable<String>
 }
