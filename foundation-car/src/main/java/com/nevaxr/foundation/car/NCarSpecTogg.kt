@@ -39,10 +39,10 @@ object NCarSpecTogg : NCarSpecGeneric {
     val brand = runCatching { brand.getProperty(carService) }.getOrNull()
     val model = runCatching { model.getProperty(carService) }.getOrNull()
     Timber.d("Checking if the car is Togg, brand: ${brand ?: "null"}, model: ${model ?: "null"}")
-    if (brand == NCAR_TOGG_BRAND) {
+   /* if (brand == NCAR_TOGG_BRAND) {
       return true
-    }
-    val canUseDemoFallback = hasDemoProvider && (brand == null || model == null)
+    }*/
+    val canUseDemoFallback = hasDemoProvider
     if (canUseDemoFallback) {
       Timber.d("TOGG brand/model is unavailable; using demo fallback provider")
     }
@@ -74,7 +74,6 @@ object NCarSpecTogg : NCarSpecGeneric {
     subscribePrimary = { carService, rate, emit ->
       carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
         provider.subscribe<Number>(NVhalKey.PERF_VEHICLE_SPEED, rate) { property ->
-          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
           emit(MeasurementRanged(property.value.toFloat(), UnitSpeed.metersPerSecond, speedRange))
         }
       }
@@ -89,9 +88,6 @@ object NCarSpecTogg : NCarSpecGeneric {
       val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
         ?: error("NVhalProvider is unavailable")
       val property = provider.getProperty<Number>(NVhalKey.PERF_VEHICLE_SPEED)
-      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
-        error("Speed is not available from primary provider")
-      }
       MeasurementRanged(property.value.toFloat(), UnitSpeed.metersPerSecond, speedRange)
     },
     readFallback = { carService ->
@@ -106,7 +102,6 @@ object NCarSpecTogg : NCarSpecGeneric {
     subscribePrimary = { carService, rate, emit ->
       carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
         provider.subscribe<Int>(NVhalKey.GEAR_SELECTION, rate) { property ->
-          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
           emit(rawGearToNCarGear(property.value))
         }
       }
@@ -119,9 +114,6 @@ object NCarSpecTogg : NCarSpecGeneric {
       val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
         ?: error("NVhalProvider is unavailable")
       val property = provider.getProperty<Int>(NVhalKey.GEAR_SELECTION)
-      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
-        error("Gear is not available from primary provider")
-      }
       rawGearToNCarGear(property.value)
     },
     readFallback = { carService ->
@@ -205,7 +197,6 @@ object NCarSpecTogg : NCarSpecGeneric {
       var current = NCarDoorState()
       carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
         provider.subscribe<Int>(NVhalKey.DOOR_POS, rate) { property ->
-          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
           current = reduceDoorState(current, property)
           emit(current)
         }
@@ -219,9 +210,6 @@ object NCarSpecTogg : NCarSpecGeneric {
       val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
         ?: error("NVhalProvider is unavailable")
       val property = provider.getProperty<Int>(NVhalKey.DOOR_POS)
-      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
-        error("Door state is not available from primary provider")
-      }
       reduceDoorState(NCarDoorState(), property)
     },
     readFallback = { carService ->
@@ -287,8 +275,7 @@ object NCarSpecTogg : NCarSpecGeneric {
     subscribePrimary = { carService, rate, emit ->
       var current = NCarWindowState()
       carService.propertyProviderOfOrNull(NVhalProvider::class)?.let { provider ->
-        provider.subscribe<Float>(NVhalKey.WINDOW_POS, rate) { property ->
-          if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) return@subscribe
+        provider.subscribe(NVhalKey.WINDOW_POS, rate) { property ->
           current = reduceWindowState(current, property)
           emit(current)
         }
@@ -302,9 +289,6 @@ object NCarSpecTogg : NCarSpecGeneric {
       val provider = carService.propertyProviderOfOrNull(NVhalProvider::class)
         ?: error("NVhalProvider is unavailable")
       val property = provider.getProperty<Float>(NVhalKey.WINDOW_POS)
-      if (property.propertyStatus != CarPropertyValue.STATUS_AVAILABLE) {
-        error("Window state is not available from primary provider")
-      }
       reduceWindowState(NCarWindowState(), property)
     },
     readFallback = { carService ->
