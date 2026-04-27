@@ -145,16 +145,17 @@ Example:
 
 ```kotlin
 class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
+    val currentAccountToken by car.stateOf(car.spec.currentAccountToken)
     val truIdToken by car.stateOf(car.spec.truIdToken)
 }
 ```
 
-`truIdToken` starts as `null`, then updates to `TruIdAuthResult.Success` or `TruIdAuthResult.Error` after the provider reads from Android `AccountManager`.
+`currentAccountToken` is the generic account token field available through `NCarSpecGeneric`. `truIdToken` is the TOGG-specific alias for the same AccountManager-backed token. Both start as `null`, then update to `TruIdAuthResult.Success` or `TruIdAuthResult.Error` after the provider reads from Android `AccountManager`.
 
 Example result handling:
 
 ```kotlin
-when (val result = state.truIdToken) {
+when (val result = state.currentAccountToken) {
     is TruIdAuthResult.Success -> {
         val token = result.token
     }
@@ -259,7 +260,7 @@ This section is intentionally prepared for later completion.
 | TOGG cabin current temperature | `VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY` | Unavailable | Available | Requires vendor extension permission |
 | TOGG ambient light read | `VendorKeys.AMBIENT_LIGHT_READ` | Unavailable | Available | Requires vendor extension permission |
 | TOGG ambient light write | `VendorKeys.AMBIENT_LIGHT_WRITE` | Unavailable | Available | Requires vendor extension permission and signed write access |
-| Tru.ID AccountManager token | `NCarSpecTogg.truIdToken` / `getTruIdToken(context)` | Unavailable | Available | Requires `GET_ACCOUNTS`, TOGG ID authenticator package visibility, and the specific TOGG-approved signing keystore |
+| Tru.ID AccountManager token | `NCarSpecGeneric.currentAccountToken` / `NCarSpecTogg.truIdToken` / `getTruIdToken(context)` | Unavailable | Available | Requires `GET_ACCOUNTS`, TOGG ID authenticator package visibility, and the specific TOGG-approved signing keystore |
 
 Recommended completion rule for this table:
 

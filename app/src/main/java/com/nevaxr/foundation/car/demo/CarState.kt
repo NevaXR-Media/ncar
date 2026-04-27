@@ -37,6 +37,7 @@ class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
   val frunkAngle by car.stateOf(car.spec.frunkAngle)
   val windowState by car.stateOf(car.spec.windowState)
   val ambientLight by car.stateOf(car.spec.ambientLight)
+  val currentAccountToken by car.stateOf(car.spec.currentAccountToken)
 
   suspend fun setAmbientLight(hex: String) {
     car.setProperty(car.spec.ambientLightControl, hex)

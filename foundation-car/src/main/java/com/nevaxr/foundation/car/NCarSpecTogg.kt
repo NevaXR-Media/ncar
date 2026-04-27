@@ -11,15 +11,28 @@ object NCarSpecTogg : NCarSpecGeneric {
 
     // TODO(umur): These are TOGG specific vendor properties???
     private val VENDOR_PERMISSION = setOf("android.car.permission.CAR_VENDOR_EXTENSION")
-    val DRIVE_MODE_PROPERTY = NVhalKey(557842693, 0, "Vendor Drive Mode Property", VENDOR_PERMISSION)
+    val DRIVE_MODE_PROPERTY =
+      NVhalKey(557842693, 0, "Vendor Drive Mode Property", VENDOR_PERMISSION)
     val CABIN_CURRENT_TEMP_DEG_PROPERTY =
       NVhalKey(559939846, 0, "Vendor Cabin Current Temp Deg Property", VENDOR_PERMISSION)
-    val SOC_BATTERY_LEVEL_PROPERTY = NVhalKey(559939847, 0, "Vendor Soc Battery Level Property", VENDOR_PERMISSION)
-    val CRUISE_CONTROL_STATUS = NVhalKey(557842696, 0, "Vendor Cruise Control Status", VENDOR_PERMISSION)
+    val SOC_BATTERY_LEVEL_PROPERTY =
+      NVhalKey(559939847, 0, "Vendor Soc Battery Level Property", VENDOR_PERMISSION)
+    val CRUISE_CONTROL_STATUS =
+      NVhalKey(557842696, 0, "Vendor Cruise Control Status", VENDOR_PERMISSION)
     val AMBIENT_LIGHT_READ =
-      NVhalKey(557842697, 0, "Vendor Ambient Light Property", VENDOR_PERMISSION) // VENDOR_AMBIENT_LIGH
+      NVhalKey(
+        557842697,
+        0,
+        "Vendor Ambient Light Property",
+        VENDOR_PERMISSION
+      ) // VENDOR_AMBIENT_LIGH
     val AMBIENT_LIGHT_WRITE =
-      NVhalKey(557842961, 0, "Vendor Ambient Light Property", VENDOR_PERMISSION) // VENDOR_AMBIENT_LIGHT_REQ
+      NVhalKey(
+        557842961,
+        0,
+        "Vendor Ambient Light Property",
+        VENDOR_PERMISSION
+      ) // VENDOR_AMBIENT_LIGHT_REQ
   }
 
   override val specName = "Togg"
@@ -40,9 +53,9 @@ object NCarSpecTogg : NCarSpecGeneric {
     val brand = runCatching { brand.getProperty(carService) }.getOrNull()
     val model = runCatching { model.getProperty(carService) }.getOrNull()
     Timber.d("Checking if the car is Togg, brand: ${brand ?: "null"}, model: ${model ?: "null"}")
-   /* if (brand == NCAR_TOGG_BRAND) {
-      return true
-    }*/
+    /* if (brand == NCAR_TOGG_BRAND) {
+       return true
+     }*/
     val canUseDemoFallback = hasDemoProvider
     if (canUseDemoFallback) {
       Timber.d("TOGG brand/model is unavailable; using demo fallback provider")
@@ -93,7 +106,11 @@ object NCarSpecTogg : NCarSpecGeneric {
     },
     readFallback = { carService ->
       val provider = carService.propertyProviderOf(DemoPropertyProvider::class)
-      MeasurementRanged(provider.currentSpeedMetersPerSecond(), UnitSpeed.metersPerSecond, speedRange)
+      MeasurementRanged(
+        provider.currentSpeedMetersPerSecond(),
+        UnitSpeed.metersPerSecond,
+        speedRange
+      )
     },
   )
   override val gear = FallbackStateProperty(
@@ -125,14 +142,15 @@ object NCarSpecTogg : NCarSpecGeneric {
 
   enum class DrivingMode { ECO, COMFORT, SPORT, UNKNOWN }
 
-  val drivingMode = NVhalProperty.int(VendorKeys.DRIVE_MODE_PROPERTY, DrivingMode.UNKNOWN) { raw: Int ->
-    when (raw) {
-      0 -> DrivingMode.ECO
-      1 -> DrivingMode.COMFORT
-      2 -> DrivingMode.SPORT
-      else -> DrivingMode.UNKNOWN
+  val drivingMode =
+    NVhalProperty.int(VendorKeys.DRIVE_MODE_PROPERTY, DrivingMode.UNKNOWN) { raw: Int ->
+      when (raw) {
+        0 -> DrivingMode.ECO
+        1 -> DrivingMode.COMFORT
+        2 -> DrivingMode.SPORT
+        else -> DrivingMode.UNKNOWN
+      }
     }
-  }
 
   override val evChargingRate = NVhalProperty.measurement(
     NVhalKey.EV_BATTERY_INSTANTANEOUS_CHARGE_RATE,
@@ -144,9 +162,17 @@ object NCarSpecTogg : NCarSpecGeneric {
   override val hvacDualStatus = NVhalProperty.boolean(NVhalKey.HVAC_DUAL_ON)
   override val hvacMaxStatus = NVhalProperty.boolean(NVhalKey.HVAC_MAX_AC_ON)
   override val hvacFanSpeed =
-    NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
+    NVhalProperty.measurement(
+      NVhalKey.HVAC_FAN_SPEED,
+      UnitRpm,
+      MeasurementUnitRange(0f, 7f, UnitRpm)
+    )
   override val hvacPassengerSpeed =
-    NVhalProperty.measurement(NVhalKey.HVAC_FAN_SPEED, UnitRpm, MeasurementUnitRange(0f, 7f, UnitRpm))
+    NVhalProperty.measurement(
+      NVhalKey.HVAC_FAN_SPEED,
+      UnitRpm,
+      MeasurementUnitRange(0f, 7f, UnitRpm)
+    )
   override val hvacTemperature = NVhalProperty.rawReducer<Float, NCarHvacTemperatureState>(
     NVhalKey.HVAC_TEMPERATURE_SET,
     NCarHvacTemperatureState(
@@ -155,8 +181,20 @@ object NCarSpecTogg : NCarSpecGeneric {
     )
   ) { state, property ->
     when (property.areaId) {
-      hvacTemperatureAreaIds.driver -> state.copy(driver = Measurement(property.value, UnitTemperature.celsius))
-      hvacTemperatureAreaIds.passenger -> state.copy(passenger = Measurement(property.value, UnitTemperature.celsius))
+      hvacTemperatureAreaIds.driver -> state.copy(
+        driver = Measurement(
+          property.value,
+          UnitTemperature.celsius
+        )
+      )
+
+      hvacTemperatureAreaIds.passenger -> state.copy(
+        passenger = Measurement(
+          property.value,
+          UnitTemperature.celsius
+        )
+      )
+
       else -> state
     }
   }
@@ -220,16 +258,20 @@ object NCarSpecTogg : NCarSpecGeneric {
   )
 
   private const val TRUNK_AREA_ID = 536870912
-  override val trunkState = NVhalProperty.rawReducer<Int, Boolean>(NVhalKey.DOOR_POS, false) { state, property ->
-    if (property.areaId == TRUNK_AREA_ID) {
-      property.value == 1
-    } else {
-      state
+  override val trunkState =
+    NVhalProperty.rawReducer<Int, Boolean>(NVhalKey.DOOR_POS, false) { state, property ->
+      if (property.areaId == TRUNK_AREA_ID) {
+        property.value == 1
+      } else {
+        state
+      }
     }
-  }
 
   override val trunkAngle =
-    NVhalProperty.rawReducer<Int, _>(NVhalKey.DOOR_POS, Measurement(0f, UnitAngle.degrees)) { state, property ->
+    NVhalProperty.rawReducer<Int, _>(
+      NVhalKey.DOOR_POS,
+      Measurement(0f, UnitAngle.degrees)
+    ) { state, property ->
       if (property.areaId == TRUNK_AREA_ID) {
         if (property.value == 1) {
           Measurement(180f, UnitAngle.degrees)
@@ -242,13 +284,14 @@ object NCarSpecTogg : NCarSpecGeneric {
     }
 
   private const val FRUNK_AREA_ID = 268435456
-  override val frunkState = NVhalProperty.rawReducer<Int, Boolean>(NVhalKey.DOOR_POS, false) { state, property ->
-    if (property.areaId == FRUNK_AREA_ID) {
-      property.value == 1
-    } else {
-      state
+  override val frunkState =
+    NVhalProperty.rawReducer<Int, Boolean>(NVhalKey.DOOR_POS, false) { state, property ->
+      if (property.areaId == FRUNK_AREA_ID) {
+        property.value == 1
+      } else {
+        state
+      }
     }
-  }
 
   override val frunkAngle = NVhalProperty.rawReducer<Int, Measurement<UnitAngle>>(
     NVhalKey.DOOR_POS,
@@ -320,6 +363,7 @@ object NCarSpecTogg : NCarSpecGeneric {
   private const val AMBIENT_COLOR_BLUE = 6
   private const val AMBIENT_COLOR_GREEN = 7
   private const val AMBIENT_COLOR_WHITE = 8
+
   private data class AmbientPaletteEntry(
     val order: Int,
     val color: NCarAmbientColor,
@@ -339,15 +383,17 @@ object NCarSpecTogg : NCarSpecGeneric {
   )
 
   override val ambientLightSupportedHexColors = ambientPalette.map { it.hex }
-  override val ambientLight = NVhalProperty.int(VendorKeys.AMBIENT_LIGHT_READ, NCarAmbientColor.NONE) { raw ->
-    ambientPalette.firstOrNull { it.order == raw }?.color ?: NCarAmbientColor.NONE
-  }
+  override val ambientLight =
+    NVhalProperty.int(VendorKeys.AMBIENT_LIGHT_READ, NCarAmbientColor.NONE) { raw ->
+      ambientPalette.firstOrNull { it.order == raw }?.color ?: NCarAmbientColor.NONE
+    }
 
   override val ambientLightControl =
     NVhalProperty.intOutput<String>(VendorKeys.AMBIENT_LIGHT_WRITE) { hex ->
       nearestAmbientColorOrder(hex)
     }
-  override val truIdToken = TruIdTokenProperty
+  override val currentAccountToken = TruIdTokenProperty
+  val truIdToken get() =  currentAccountToken
 
   private fun nearestAmbientColorOrder(hex: String): Int {
     val target = hexToRgbOrNull(hex) ?: return AMBIENT_COLOR_NONE
@@ -391,7 +437,10 @@ object NCarSpecTogg : NCarSpecGeneric {
     }
   }
 
-  private fun reduceDoorState(state: NCarDoorState, property: CarPropertyValue<Int>): NCarDoorState {
+  private fun reduceDoorState(
+    state: NCarDoorState,
+    property: CarPropertyValue<Int>
+  ): NCarDoorState {
     return when (property.areaId) {
       doorAreaIds.frontLeft -> state.copy(frontLeft = property.value == 1)
       doorAreaIds.frontRight -> state.copy(frontRight = property.value == 1)
@@ -401,7 +450,10 @@ object NCarSpecTogg : NCarSpecGeneric {
     }
   }
 
-  private fun reduceWindowState(state: NCarWindowState, property: CarPropertyValue<Float>): NCarWindowState {
+  private fun reduceWindowState(
+    state: NCarWindowState,
+    property: CarPropertyValue<Float>
+  ): NCarWindowState {
     return when (property.areaId) {
       WINDOW_FRONT_LEFT_AREA_ID -> state.copy(frontLeft = property.value)
       WINDOW_FRONT_RIGHT_AREA_ID -> state.copy(frontRight = property.value)
