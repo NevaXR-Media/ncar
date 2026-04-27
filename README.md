@@ -185,13 +185,13 @@ The AccountManager integration uses:
 - auth type: `bearer`
 - authenticator package: `tr.com.togg.idcc.core.togg_toggid_account_authenticator_service`
 
-The library manifest declares the required `GET_ACCOUNTS` permission and the package visibility query for the TOGG ID authenticator service:
+The library manifest declares the required `GET_ACCOUNTS` permission and the package visibility query for the TOGG ID authenticator service. The demo app manifest declares them explicitly as well, so the demo remains runnable and self-documenting even without relying on manifest merge behavior:
 
 ```xml
-<uses-permission android:name="android.permission.GET_ACCOUNTS" />
+<uses-permission android:name="android.permission.GET_ACCOUNTS"/>
 
 <queries>
-    <package android:name="tr.com.togg.idcc.core.togg_toggid_account_authenticator_service" />
+    <package android:name="tr.com.togg.idcc.core.togg_toggid_account_authenticator_service"/>
 </queries>
 ```
 
