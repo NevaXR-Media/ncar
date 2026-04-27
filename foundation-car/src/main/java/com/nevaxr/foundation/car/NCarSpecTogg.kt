@@ -26,6 +26,7 @@ object NCarSpecTogg : NCarSpecGeneric {
   override fun providers(carService: NCarServiceBase) = buildList {
     carService.propertyProviderOfOrNull(NVhalProvider::class)?.let(::add)
     carService.propertyProviderOfOrNull(DemoPropertyProvider::class)?.let(::add)
+    carService.propertyProviderOfOrNull(TruIdAccountManagerProvider::class)?.let(::add)
   }
 
   override suspend fun identify(carService: NCarServiceBase): Boolean {
@@ -346,6 +347,7 @@ object NCarSpecTogg : NCarSpecGeneric {
     NVhalProperty.intOutput<String>(VendorKeys.AMBIENT_LIGHT_WRITE) { hex ->
       nearestAmbientColorOrder(hex)
     }
+  override val truIdToken = TruIdTokenProperty
 
   private fun nearestAmbientColorOrder(hex: String): Int {
     val target = hexToRgbOrNull(hex) ?: return AMBIENT_COLOR_NONE

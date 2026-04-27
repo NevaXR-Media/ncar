@@ -149,6 +149,7 @@ class NCarService<BaseCarSpec : NCarSpec, CarState>(
       return Builder<NCarSpecGeneric, CarState>(scope)
         .addCarSpec(NCarSpecTogg)
         .addProvider { NVhalProvider(context, scope, forceInitialPropertyRead) }
+        .addProvider { TruIdAccountManagerProvider(context, scope) }
         .build(carStateBuilder)
     }
 
@@ -161,6 +162,7 @@ class NCarService<BaseCarSpec : NCarSpec, CarState>(
         .addCarSpec(NCarSpecTogg)
         .addProvider { NVhalProvider(context, scope, true) }
         .addProvider { DemoPropertyProvider() }
+        .addProvider { TruIdAccountManagerProvider(context, scope) }
         .build(carStateBuilder)
     }
   }

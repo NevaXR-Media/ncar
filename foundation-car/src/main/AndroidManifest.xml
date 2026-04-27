@@ -4,4 +4,10 @@
         android:name="android.hardware.type.automotive"
         android:required="true" />
 
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+    <queries>
+        <package android:name="tr.com.togg.idcc.core.togg_toggid_account_authenticator_service" />
+    </queries>
+
 </manifest>

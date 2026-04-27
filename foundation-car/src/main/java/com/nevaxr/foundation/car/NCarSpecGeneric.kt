@@ -38,4 +38,5 @@ interface NCarSpecGeneric : NCarSpec {
     val ambientLight: NCarStateProperty<NCarAmbientColor>
     val ambientLightSupportedHexColors: List<String>
     val ambientLightControl: NCarPropertyWritable<String>
+    val truIdToken: NCarStateProperty<TruIdAuthResult?>
 }

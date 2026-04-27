@@ -137,6 +137,72 @@ Operational note:
 - Ambient light control should be treated as vendor-restricted functionality.
 - Even if the permission is declared in the manifest, successful write access may still require a TOGG-approved signed APK or platform-level privilege grant.
 
+## How To Get Tru.ID Token
+
+The library exposes Tru.ID AccountManager access as a normal car state property. Prefer this path when working with an `NCar` instance because it participates in the same permission discovery and provider lifecycle as the other car fields.
+
+Example:
+
+```kotlin
+class CarState(private val car: NCar<NCarSpecTogg, CarState>) {
+    val truIdToken by car.stateOf(car.spec.truIdToken)
+}
+```
+
+`truIdToken` starts as `null`, then updates to `TruIdAuthResult.Success` or `TruIdAuthResult.Error` after the provider reads from Android `AccountManager`.
+
+Example result handling:
+
+```kotlin
+when (val result = state.truIdToken) {
+    is TruIdAuthResult.Success -> {
+        val token = result.token
+    }
+    is TruIdAuthResult.Error -> {
+        Timber.w("Tru.ID token unavailable: %s", result.message)
+    }
+    null -> {
+        // Token read has not completed yet.
+    }
+}
+```
+
+For one-off reads outside an `NCar` state object, `getTruIdToken(context)` is still available:
+
+```kotlin
+lifecycleScope.launch {
+    getTruIdToken(context).collect { result ->
+        if (result is TruIdAuthResult.Success) {
+            val token = result.token
+        }
+    }
+}
+```
+
+The AccountManager integration uses:
+
+- account type: `Tru.ID`
+- auth type: `bearer`
+- authenticator package: `tr.com.togg.idcc.core.togg_toggid_account_authenticator_service`
+
+The library manifest declares the required `GET_ACCOUNTS` permission and the package visibility query for the TOGG ID authenticator service:
+
+```xml
+<uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+<queries>
+    <package android:name="tr.com.togg.idcc.core.togg_toggid_account_authenticator_service" />
+</queries>
+```
+
+Operational notes:
+
+- `TruIdAuthResult.Success` contains the token.
+- `TruIdAuthResult.Error.NoAccount` means no active Tru.ID account was found.
+- `TruIdAuthResult.Error.EmptyToken` means AccountManager returned success without a token.
+- `TruIdAuthResult.Error.AccountManagerError` wraps authenticator or platform failures.
+- To access the Tru.ID AccountManager authenticator, the APK must be signed with the specific TOGG-approved keystore. Declaring `GET_ACCOUNTS` and adding the package query is required, but it is not enough by itself.
+
 ## Permissions Model
 
 Access is permission-driven at two levels:
@@ -150,6 +216,7 @@ This is an important distinction:
 
 - Declaring a permission in the manifest does not guarantee that the vehicle platform will grant access.
 - Access to some properties, especially vendor extensions, may depend on platform signature, OEM privilege configuration, or both.
+- Access to the Tru.ID AccountManager authenticator also depends on signing the APK with the specific TOGG-approved keystore.
 
 ## Signed APK and TOGG Access Boundary
 
@@ -192,6 +259,7 @@ This section is intentionally prepared for later completion.
 | TOGG cabin current temperature | `VendorKeys.CABIN_CURRENT_TEMP_DEG_PROPERTY` | Unavailable | Available | Requires vendor extension permission |
 | TOGG ambient light read | `VendorKeys.AMBIENT_LIGHT_READ` | Unavailable | Available | Requires vendor extension permission |
 | TOGG ambient light write | `VendorKeys.AMBIENT_LIGHT_WRITE` | Unavailable | Available | Requires vendor extension permission and signed write access |
+| Tru.ID AccountManager token | `NCarSpecTogg.truIdToken` / `getTruIdToken(context)` | Unavailable | Available | Requires `GET_ACCOUNTS`, TOGG ID authenticator package visibility, and the specific TOGG-approved signing keystore |
 
 Recommended completion rule for this table:
 
@@ -259,5 +327,6 @@ The main implementation points for this document are:
 - [`NVhalProvider.kt`](/Users/utkuyildiz/Library/Mobile%20Documents/com~apple~CloudDocs/Projects/Android/nfoundation-car/foundation-car/src/main/java/com/nevaxr/foundation/car/NVhalProvider.kt)
 - [`NVhalProperty.kt`](/Users/utkuyildiz/Library/Mobile%20Documents/com~apple~CloudDocs/Projects/Android/nfoundation-car/foundation-car/src/main/java/com/nevaxr/foundation/car/NVhalProperty.kt)
 - [`NCarSpecTogg.kt`](/Users/utkuyildiz/Library/Mobile%20Documents/com~apple~CloudDocs/Projects/Android/nfoundation-car/foundation-car/src/main/java/com/nevaxr/foundation/car/NCarSpecTogg.kt)
+- [`TruIdAccountManager.kt`](/Users/utkuyildiz/Projects/Android/nfoundation-car/foundation-car/src/main/java/com/nevaxr/foundation/car/TruIdAccountManager.kt)
 - [`MainActivity.kt`](/Users/utkuyildiz/Library/Mobile%20Documents/com~apple~CloudDocs/Projects/Android/nfoundation-car/app/src/main/java/com/nevaxr/foundation/car/demo/MainActivity.kt)
 - [`app/src/main/AndroidManifest.xml`](/Users/utkuyildiz/Library/Mobile%20Documents/com~apple~CloudDocs/Projects/Android/nfoundation-car/app/src/main/AndroidManifest.xml)
