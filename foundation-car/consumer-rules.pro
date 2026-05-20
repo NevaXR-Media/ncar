@@ -1,0 +1,2 @@
+-keep class com.nevaxr.foundation.car.unity.** { *; }
+-keep interface com.nevaxr.foundation.car.unity.** { *; }

@@ -15,6 +15,85 @@ The current implementation covers four responsibilities:
 3. Transform raw values into normalized domain models.
 4. Expose those models as observable state and limited writable controls.
 
+## Unity AAR Integration
+
+The `foundation-car` module now includes a Unity-friendly bridge:
+
+- Android class: `com.nevaxr.foundation.car.unity.UnityNCarBridge`
+- AAR output: `foundation-car/build/outputs/aar/foundation-car-release.aar`
+- Data format: JSON string
+- Update modes: Unity can either poll `getLatestJson()` or receive updates through `UnitySendMessage`.
+
+Build the AAR:
+
+```bash
+./gradlew :foundation-car:assembleRelease
+```
+
+If Gradle cannot find the Android SDK, set `ANDROID_HOME` or create the normal Android Studio `local.properties` file with `sdk.dir=...`.
+
+Minimal Unity C# usage:
+
+```csharp
+using UnityEngine;
+
+public sealed class NCarUnityClient : MonoBehaviour
+{
+    private AndroidJavaObject bridge;
+
+    private void Start()
+    {
+        using var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+        using var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+
+        bridge = new AndroidJavaObject(
+            "com.nevaxr.foundation.car.unity.UnityNCarBridge",
+            activity
+        );
+
+        bridge.Call("setUnityCallback", gameObject.name, nameof(OnNCarData));
+        bridge.Call("initialize");
+    }
+
+    public void OnNCarData(string json)
+    {
+        Debug.Log(json);
+    }
+
+    public string GetCurrentCarJson()
+    {
+        return bridge?.Call<string>("getLatestJson") ?? "{}";
+    }
+
+    private void OnDestroy()
+    {
+        bridge?.Call("release");
+        bridge?.Dispose();
+    }
+}
+```
+
+The JSON snapshot contains all currently mapped TOGG fields from this library:
+
+- `vehicle`: VIN/device ID, brand, model
+- `motion`: speed, speed in km/h, gear, driving mode, acceleration, steering angle
+- `energy`: battery, battery capacity, charging rate, engine/powertrain proxy
+- `climate`: HVAC status, dual/max flags, fan speeds, set/interior/exterior temperatures
+- `seats`: occupancy state
+- `closures`: doors, trunk, frunk
+- `windows`: four-window position state
+- `lighting`: ambient light state and supported ambient light colors
+- `account`: Tru.ID token read result
+- `requiredPermissions`: permissions required by the active subscriptions
+
+Writable helpers exposed to Unity:
+
+- `setAmbientLight(String hex)`
+- `setDemoSpeedKmh(float kmh)`
+- `setDemoGear(String gearName)` where `gearName` is `Park`, `Reverse`, `Neutral`, or `Drive`
+
+When importing only the raw AAR into Unity, make sure the Unity Android Gradle project also resolves the library dependencies declared in `foundation-car/build.gradle.kts`, especially Kotlin, coroutines, AndroidX, Timber, Compose runtime/UI, Material, and kotlinx serialization.
+
 ## Data Acquisition Flow
 
 Vehicle data is collected through the following flow:

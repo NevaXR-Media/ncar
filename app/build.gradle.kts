@@ -6,6 +6,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val platformKeystoreFile = rootProject.file("platform.keystore")
+val hasReleaseKeystore = keystorePropertiesFile.exists() && platformKeystoreFile.exists()
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(keystorePropertiesFile.inputStream())
+    }
+}
+
 android {
     namespace = "com.nevaxr.foundation.car.demo"
     compileSdk = 36
@@ -21,15 +30,13 @@ android {
     }
 
     signingConfigs {
-        val keystoreProperties = Properties().apply {
-            load(rootProject.file("keystore.properties").inputStream())
-        }
-
-        create("keystore") {
-            keyAlias = keystoreProperties.getProperty("keystore.alias")
-            keyPassword = keystoreProperties.getProperty("keystore.password")
-            storeFile = rootProject.file("platform.keystore")
-            storePassword = keystoreProperties.getProperty("keystore.password")
+        if (hasReleaseKeystore) {
+            create("keystore") {
+                keyAlias = keystoreProperties.getProperty("keystore.alias")
+                keyPassword = keystoreProperties.getProperty("keystore.password")
+                storeFile = platformKeystoreFile
+                storePassword = keystoreProperties.getProperty("keystore.password")
+            }
         }
     }
 
@@ -45,7 +52,9 @@ android {
 
         release {
             isDebuggable = true
-            signingConfig = signingConfigs.getByName("keystore")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("keystore")
+            }
             applicationIdSuffix = ".signed"
             isMinifyEnabled = true
 
