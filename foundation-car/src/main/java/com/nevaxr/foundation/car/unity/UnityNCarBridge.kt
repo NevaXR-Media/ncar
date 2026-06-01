@@ -203,6 +203,7 @@ private class UnityCarState(private val car: NCar<NCarSpecTogg, UnityCarState>) 
   private val model = car.stateFlowOf(car.spec.model)
   private val speed = car.stateFlowOf(car.spec.speed, NSensorRate.UI)
   private val gear = car.stateFlowOf(car.spec.gear)
+  private val drivingModeRaw = car.stateFlowOf(car.spec.drivingModeRaw)
   private val drivingMode = car.stateFlowOf(car.spec.drivingMode)
   private val evChargingRate = car.stateFlowOf(car.spec.evChargingRate)
   private val hvacStatus = car.stateFlowOf(car.spec.hvacStatus)
@@ -235,6 +236,7 @@ private class UnityCarState(private val car: NCar<NCarSpecTogg, UnityCarState>) 
       model,
       speed,
       gear,
+      drivingModeRaw,
       drivingMode,
       evChargingRate,
       hvacStatus,
@@ -305,6 +307,7 @@ private class UnityCarState(private val car: NCar<NCarSpecTogg, UnityCarState>) 
           .put("speed", measurementRangedJson(speed.value))
           .put("speedKmh", UnitSpeed.metersPerSecond.convert(speed.value.value, UnitSpeed.kilometersPerHour))
           .put("gear", gear.value.name)
+          .put("drivingModeRaw", drivingModeRaw.value)
           .put("drivingMode", drivingMode.value.name)
           .put("acceleration", acceleration.value)
           .put("steeringWheelAngle", measurementJson(steeringWheelAngle.value))
