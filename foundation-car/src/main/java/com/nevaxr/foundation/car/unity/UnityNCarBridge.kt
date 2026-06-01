@@ -12,6 +12,7 @@ import com.nevaxr.foundation.car.NCarService
 import com.nevaxr.foundation.car.NCarSpecTogg
 import com.nevaxr.foundation.car.NCarWindowState
 import com.nevaxr.foundation.car.NSensorRate
+import com.nevaxr.foundation.car.NVhalProvider
 import com.nevaxr.foundation.car.TruIdAuthResult
 import com.nevaxr.foundation.car.UnitAngle
 import com.nevaxr.foundation.car.UnitEnergy
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
@@ -83,7 +85,8 @@ class UnityNCarBridge(context: Context) {
         return@launch
       }
 
-      service.start()
+      service.startAndAwait()
+      delay(InitialSnapshotSettleMillis)
       car.state.snapshots().collect(::publishJson)
     }
   }
@@ -187,6 +190,8 @@ class UnityNCarBridge(context: Context) {
   }
 
   companion object {
+    private const val InitialSnapshotSettleMillis = 1500L
+
     @JvmStatic
     fun create(context: Context): UnityNCarBridge = UnityNCarBridge(context)
   }
@@ -345,7 +350,22 @@ private class UnityCarState(private val car: NCar<NCarSpecTogg, UnityCarState>) 
       )
       .put("account", accountJson(currentAccountToken.value))
       .put("requiredPermissions", JSONArray(car.requiredPermissions.sorted()))
+      .put("diagnostics", diagnosticsJson())
       .toString()
+  }
+
+  private fun diagnosticsJson(): JSONObject {
+    val vhalProvider = car.propertyProviderOfOrNull(NVhalProvider::class)
+    val readFailures = vhalProvider?.readFailuresSnapshot().orEmpty()
+
+    return JSONObject()
+      .put("hasVhalProvider", vhalProvider != null)
+      .put("vhalReadFailureCount", readFailures.size)
+      .put("vhalReadFailures", stringMapJson(readFailures))
+      .put(
+        "vehicleIdentityReady",
+        deviceId.value != null || brand.value != null || model.value != null
+      )
   }
 }
 
@@ -432,6 +452,14 @@ private fun accountJson(result: TruIdAuthResult?): JSONObject {
       .put("status", "error")
       .putNullable("token", null)
       .put("message", result.message)
+  }
+}
+
+private fun stringMapJson(values: Map<String, String>): JSONObject {
+  return JSONObject().also { json ->
+    values.toSortedMap().forEach { (key, value) ->
+      json.put(key, value)
+    }
   }
 }
 

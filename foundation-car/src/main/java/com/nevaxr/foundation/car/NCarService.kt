@@ -91,12 +91,24 @@ class NCarService<BaseCarSpec : NCarSpec, CarState>(
   fun start() {
     if (startJob?.isActive == true) return
     if (!isProvidersRunning) {
-      startJob = scope.launch {
-        val car = awaitReady().getOrThrow()
-        car.spec.providers(this@NCarService).forEach { it.start() }
-        isProvidersRunning = true
-      }
+      startJob = scope.launch { startProviders() }
     }
+  }
+
+  suspend fun startAndAwait() {
+    if (isProvidersRunning) return
+
+    val job = startJob?.takeIf { it.isActive } ?: scope.launch { startProviders() }.also {
+      startJob = it
+    }
+
+    job.join()
+  }
+
+  private suspend fun startProviders() {
+    val car = awaitReady().getOrThrow()
+    car.spec.providers(this@NCarService).forEach { it.start() }
+    isProvidersRunning = true
   }
 
   fun stop() {

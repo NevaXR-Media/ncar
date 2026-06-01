@@ -6,6 +6,8 @@ import android.car.hardware.property.CarPropertyManager
 import android.content.Context
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.util.Collections
+import java.util.LinkedHashMap
 
 /**
  *  Car property provider for Android auto VHAL car api
@@ -22,8 +24,15 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope, val for
   private val car = Car.createCar(context)
   private val propertyManager = car.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
   private val subscriptions = mutableMapOf<NVhalKey, VhalPropertySubscription<*>>()
+  private val readFailures = Collections.synchronizedMap(LinkedHashMap<String, String>())
 
   private var isRunning = false
+
+  fun readFailuresSnapshot(): Map<String, String> {
+    synchronized(readFailures) {
+      return LinkedHashMap(readFailures)
+    }
+  }
 
   override fun release() {
     stop()
@@ -41,7 +50,7 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope, val for
   fun <Raw> subscribe(key: NVhalKey, rate: NSensorRate, handler: suspend (CarPropertyValue<Raw>) -> Unit) {
     val subscription = subscriptions.getOrPut(key) {
       Timber.d("Initializing a new subscription for ${key.name} (${key.id})")
-      VhalPropertySubscription<Raw>(key, scope, forceInitialRead)
+      VhalPropertySubscription<Raw>(key, scope, forceInitialRead, ::recordReadFailure)
     } as VhalPropertySubscription<Raw>
 
     Timber.d("Registering a new property subscription handler for: $key")
@@ -61,9 +70,14 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope, val for
    * Reads the given property from the actual VHAL car object
    */
   suspend fun <Raw> getProperty(key: NVhalKey) = withContext(Dispatchers.IO) {
-    propertyManager.getProperty<Raw>(key.id, key.areaId).also { property ->
-      val status = runCatching { property.propertyStatus }.getOrNull()?.toString() ?: "N/A"
-      Timber.d("Property read ${key.name} (id=${property.propertyId}, areaId=${property.areaId}, status=$status): ${property.value as Raw}")
+    try {
+      propertyManager.getProperty<Raw>(key.id, key.areaId).also { property ->
+        val status = runCatching { property.propertyStatus }.getOrNull()?.toString() ?: "N/A"
+        Timber.d("Property read ${key.name} (id=${property.propertyId}, areaId=${property.areaId}, status=$status): ${property.value as Raw}")
+      }
+    } catch (throwable: Throwable) {
+      recordReadFailure(key, throwable)
+      throw throwable
     }
   }
 
@@ -100,6 +114,12 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope, val for
       isRunning = false
     }
   }
+
+  private fun recordReadFailure(key: NVhalKey, throwable: Throwable) {
+    val name = key.name ?: "VHAL Property"
+    val message = throwable.message ?: throwable::class.java.simpleName
+    readFailures["$name (${key.id}/${key.areaId})"] = "${throwable::class.java.simpleName}: $message"
+  }
 }
 
 /**
@@ -114,7 +134,8 @@ class NVhalProvider(context: Context, private val scope: CoroutineScope, val for
 private class VhalPropertySubscription<Raw>(
   val key: NVhalKey,
   val scope: CoroutineScope,
-  val forceInitialRead: Boolean
+  val forceInitialRead: Boolean,
+  val onReadFailure: (NVhalKey, Throwable) -> Unit
 ) {
 
   private var rate: NSensorRate = NSensorRate.OnChange
@@ -166,8 +187,10 @@ private class VhalPropertySubscription<Raw>(
       runCatching {
         if (forceInitialRead) {
           val initialValue = carPropertyManager.getProperty<Raw>(key.id, key.areaId)
-          emit(initialValue)
+          handlers.forEach { it.invoke(Result.success(initialValue)) }
         }
+      }.onFailure { throwable ->
+        onReadFailure(key, throwable)
       }
 
       val result = carPropertyManager.registerCallback(
@@ -177,6 +200,7 @@ private class VhalPropertySubscription<Raw>(
       )
       Timber.d("Registered carPropertyManager $key $result")
     } catch (t: Throwable) {
+      onReadFailure(key, t)
       Timber.e(t, "Subscription failed to %s (%d)", key.name, key.id)
     }
   }

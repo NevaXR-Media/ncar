@@ -2,6 +2,7 @@ package com.nevaxr.foundation.car
 
 import kotlinx.coroutines.CoroutineScope
 import timber.log.Timber
+import kotlin.reflect.KClass
 
 class NCar<BaseCarSpec: NCarSpec, CarState>(
     val scope: CoroutineScope,
@@ -18,6 +19,11 @@ class NCar<BaseCarSpec: NCarSpec, CarState>(
     suspend fun <T> setProperty(property: NCarPropertyWritable<T>, value: T) {
         property.write(service, value)
     }
+
+    suspend fun <T> getProperty(property: NCarStateProperty<T>) = property.getProperty(service)
+
+    fun <T : NCarPropertyProvider> propertyProviderOfOrNull(klass: KClass<T>) =
+        service.propertyProviderOfOrNull(klass)
 
     fun <T> stateOf(property: NCarStateProperty<T>, sensorRate: NSensorRate = NSensorRate.OnChange) =
         property.subscribeState(service, sensorRate).also {
