@@ -142,8 +142,6 @@ object NCarSpecTogg : NCarSpecGeneric {
 
   enum class DrivingMode { ECO, COMFORT, SPORT, UNKNOWN }
 
-  val drivingModeRaw = NVhalProperty.int(VendorKeys.DRIVE_MODE_PROPERTY, -1)
-
   val drivingMode =
     NVhalProperty.int(VendorKeys.DRIVE_MODE_PROPERTY, DrivingMode.UNKNOWN) { raw: Int ->
       when (raw) {
